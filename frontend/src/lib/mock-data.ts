@@ -1,0 +1,893 @@
+import {
+  PipelineStatus,
+  StatsOverview,
+  ActivityEvent,
+  SourceHealth,
+  RawFeedback,
+  Brd,
+  Epic,
+  AuditRecord,
+} from "./types";
+
+// ============================================
+// Pipeline & Dashboard Data
+// ============================================
+
+export const mockPipelineStatus: PipelineStatus = {
+  currentStage: "awaiting_review",
+  progress: 62,
+  lastRunAt: "2026-03-13T06:30:00Z",
+  isRunning: false,
+};
+
+export const mockStats: StatsOverview = {
+  totalFeedback: 847,
+  brdsAwaitingReview: 5,
+  epicsReady: 12,
+  blockchainRecords: 34,
+};
+
+export const mockActivities: ActivityEvent[] = [
+  {
+    id: "act-1",
+    type: "brd_generated",
+    title: "New BRD Generated",
+    description: "BRD: Improve Onboarding Flow — 89% confidence",
+    timestamp: "2026-03-13T06:25:00Z",
+    actor: "AI Analyst Agent",
+  },
+  {
+    id: "act-2",
+    type: "brd_approved",
+    title: "BRD Approved",
+    description: "BRD: Dark Mode Support — approved by sarah@company.com",
+    timestamp: "2026-03-13T05:45:00Z",
+    actor: "sarah@company.com",
+  },
+  {
+    id: "act-3",
+    type: "epic_created",
+    title: "Epic Created",
+    description: "3 epics generated from BRD: Performance Optimization",
+    timestamp: "2026-03-13T05:12:00Z",
+    actor: "AI Story Writer",
+  },
+  {
+    id: "act-4",
+    type: "blockchain_write",
+    title: "Blockchain Record",
+    description: "BRD_APPROVED logged to Polygon — TX: 0x7a8f...3c2d",
+    timestamp: "2026-03-13T05:46:00Z",
+    actor: "Blockchain Notary",
+  },
+  {
+    id: "act-5",
+    type: "brd_generated",
+    title: "New BRD Generated",
+    description: "BRD: API Rate Limiting — 72% confidence (HITL queue)",
+    timestamp: "2026-03-13T04:30:00Z",
+    actor: "AI Analyst Agent",
+  },
+  {
+    id: "act-6",
+    type: "pipeline_started",
+    title: "Pipeline Triggered",
+    description: "Scheduled pipeline run started — 6h cycle",
+    timestamp: "2026-03-13T00:00:00Z",
+    actor: "System",
+  },
+  {
+    id: "act-7",
+    type: "brd_rejected",
+    title: "BRD Rejected",
+    description: "BRD: UI Color Changes — rejected: too vague",
+    timestamp: "2026-03-12T22:10:00Z",
+    actor: "mike@company.com",
+  },
+  {
+    id: "act-8",
+    type: "epic_created",
+    title: "Epic Created",
+    description: "2 epics from BRD: Multi-language Notifications",
+    timestamp: "2026-03-12T20:00:00Z",
+    actor: "AI Story Writer",
+  },
+  {
+    id: "act-9",
+    type: "blockchain_write",
+    title: "Blockchain Record",
+    description: "EPIC_CREATED logged to Polygon — TX: 0x3b1e...9f4a",
+    timestamp: "2026-03-12T20:01:00Z",
+    actor: "Blockchain Notary",
+  },
+  {
+    id: "act-10",
+    type: "brd_approved",
+    title: "BRD Approved",
+    description: "BRD: Search Functionality — approved with edits",
+    timestamp: "2026-03-12T18:30:00Z",
+    actor: "sarah@company.com",
+  },
+];
+
+export const mockSourceHealth: SourceHealth[] = [
+  { name: "Reddit", status: "healthy", lastPullAt: "2026-03-13T06:00:00Z" },
+  { name: "Twitter/X", status: "degraded", lastPullAt: "2026-03-13T00:00:00Z" },
+  { name: "App Store", status: "healthy", lastPullAt: "2026-03-13T06:00:00Z" },
+  { name: "Google Play", status: "healthy", lastPullAt: "2026-03-13T06:00:00Z" },
+  { name: "Google Sheets", status: "healthy", lastPullAt: "2026-03-13T06:00:00Z" },
+];
+
+// ============================================
+// Raw Feedback Data
+// ============================================
+
+export const mockFeedback: RawFeedback[] = [
+  {
+    id: "fb-1",
+    source: "reddit",
+    text: "The onboarding process is way too long. I had to fill out 5 different forms before I could even try the product. Almost gave up.",
+    authorId: "u/techuser2026",
+    authorTier: "free",
+    sentiment: "negative",
+    sentimentScore: 0.89,
+    isDuplicate: false,
+    clusterId: "cl-1",
+    createdAt: "2026-03-12T14:30:00Z",
+    collectedAt: "2026-03-13T06:00:00Z",
+  },
+  {
+    id: "fb-2",
+    source: "app_store",
+    text: "Love the app but PLEASE add dark mode. My eyes are burning at night. This is 2026, every app should have dark mode by now.",
+    authorId: "AppStoreUser_983",
+    authorTier: "pro",
+    sentiment: "negative",
+    sentimentScore: 0.76,
+    isDuplicate: false,
+    clusterId: "cl-2",
+    createdAt: "2026-03-11T09:15:00Z",
+    collectedAt: "2026-03-13T06:00:00Z",
+  },
+  {
+    id: "fb-3",
+    source: "twitter",
+    text: "@AutoFlowApp your search is completely broken. Can't find anything when I use filters. Fix this ASAP!",
+    authorId: "@devangry",
+    authorTier: "enterprise",
+    sentiment: "negative",
+    sentimentScore: 0.94,
+    isDuplicate: false,
+    clusterId: "cl-3",
+    createdAt: "2026-03-12T16:45:00Z",
+    collectedAt: "2026-03-13T06:00:00Z",
+  },
+  {
+    id: "fb-4",
+    source: "google_play",
+    text: "The app is really slow on my phone. Takes 10 seconds to load the dashboard. Other apps work fine.",
+    authorId: "GPUser_442",
+    authorTier: "free",
+    sentiment: "negative",
+    sentimentScore: 0.82,
+    isDuplicate: false,
+    clusterId: "cl-4",
+    createdAt: "2026-03-10T11:00:00Z",
+    collectedAt: "2026-03-13T06:00:00Z",
+  },
+  {
+    id: "fb-5",
+    source: "reddit",
+    text: "Would be great to have email notifications when someone shares a doc with me. Currently I only find out when I randomly open the app.",
+    authorId: "u/productmanager101",
+    authorTier: "pro",
+    sentiment: "neutral",
+    sentimentScore: 0.45,
+    isDuplicate: false,
+    clusterId: "cl-5",
+    createdAt: "2026-03-11T20:30:00Z",
+    collectedAt: "2026-03-13T06:00:00Z",
+  },
+  {
+    id: "fb-6",
+    source: "app_store",
+    text: "Perfect app! The collaboration features are amazing. Our team uses it every day and it's saved us so much time. 5 stars!",
+    authorId: "AppStoreUser_112",
+    authorTier: "enterprise",
+    sentiment: "positive",
+    sentimentScore: 0.96,
+    isDuplicate: false,
+    clusterId: null,
+    createdAt: "2026-03-12T08:00:00Z",
+    collectedAt: "2026-03-13T06:00:00Z",
+  },
+  {
+    id: "fb-7",
+    source: "sheet",
+    text: "The export to PDF feature doesn't preserve formatting. Headings, tables, all messed up. Had to redo everything in Word.",
+    authorId: "manual_entry",
+    authorTier: "pro",
+    sentiment: "negative",
+    sentimentScore: 0.85,
+    isDuplicate: false,
+    clusterId: "cl-6",
+    createdAt: "2026-03-09T15:00:00Z",
+    collectedAt: "2026-03-13T06:00:00Z",
+  },
+  {
+    id: "fb-8",
+    source: "reddit",
+    text: "Same onboarding complaint here. 7 steps to create an account? Are you serious? This is worse than filling out a tax form.",
+    authorId: "u/frontenddev",
+    authorTier: "free",
+    sentiment: "negative",
+    sentimentScore: 0.91,
+    isDuplicate: false,
+    clusterId: "cl-1",
+    createdAt: "2026-03-12T17:00:00Z",
+    collectedAt: "2026-03-13T06:00:00Z",
+  },
+  {
+    id: "fb-9",
+    source: "twitter",
+    text: "Dark mode when? @AutoFlowApp everyone is asking for this. It's been on your roadmap for a year!",
+    authorId: "@designlover",
+    authorTier: "pro",
+    sentiment: "negative",
+    sentimentScore: 0.71,
+    isDuplicate: false,
+    clusterId: "cl-2",
+    createdAt: "2026-03-11T21:00:00Z",
+    collectedAt: "2026-03-13T06:00:00Z",
+  },
+  {
+    id: "fb-10",
+    source: "google_play",
+    text: "API rate limits are too low. We hit them every day and our integrations break. Please increase or offer higher tiers.",
+    authorId: "GPUser_991",
+    authorTier: "enterprise",
+    sentiment: "negative",
+    sentimentScore: 0.88,
+    isDuplicate: false,
+    clusterId: "cl-7",
+    createdAt: "2026-03-10T13:00:00Z",
+    collectedAt: "2026-03-13T06:00:00Z",
+  },
+];
+
+// ============================================
+// BRDs Data
+// ============================================
+
+export const mockBrds: Brd[] = [
+  {
+    id: "brd-1",
+    clusterId: "cl-1",
+    title: "Streamline User Onboarding Flow",
+    problemStatement:
+      "Multiple users report that the onboarding process requires too many steps (5-7 forms), leading to abandonment. Evidence shows users describe it as 'worse than filling a tax form' with high frustration sentiment scores.",
+    targetAudience: "New users signing up for the first time, particularly free-tier users",
+    businessValue:
+      "Reducing onboarding friction directly impacts conversion rates. Industry benchmarks suggest each additional step reduces sign-up completion by 10-15%. Improving this could increase new user activation by 30-40%.",
+    proposedSolution:
+      "Consolidate the multi-step registration into a progressive onboarding with 2-3 essential steps and optional profile completion later.",
+    successMetrics: [
+      "Reduce onboarding steps from 7 to 3",
+      "Increase sign-up completion rate by 30%",
+      "Reduce time-to-first-action from 8min to under 2min",
+    ],
+    outOfScope: [
+      "Social login integration (separate BRD)",
+      "Enterprise SSO setup",
+      "Mobile-specific onboarding",
+    ],
+    sourceEvidence: [
+      "The onboarding process is way too long. I had to fill out 5 different forms before I could even try the product.",
+      "7 steps to create an account? Are you serious? This is worse than filling out a tax form.",
+      "Almost gave up during sign-up. Too many questions before I can even see the product.",
+    ],
+    wsjf: { businessValue: 9, timeCriticality: 8, riskReduction: 6, effort: 4 },
+    wsjfFinalScore: 8.75,
+    confidenceScore: 0.92,
+    confidenceReason:
+      "High volume of consistent feedback from multiple sources expressing the same frustration. Clear, measurable problem with obvious business impact.",
+    criticScore: 0.91,
+    criticIssues: [],
+    status: "pending_review",
+    reviewerEmail: null,
+    reviewedAt: null,
+    blockchainTxHash: "0x7a8f1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a",
+    ipfsCid: "QmX7b2kS9pWx3G8R4nV5mY6qZ1wE2rT3yU4iO5pA6sD7fG",
+    createdAt: "2026-03-13T06:25:00Z",
+  },
+  {
+    id: "brd-2",
+    clusterId: "cl-2",
+    title: "Implement Dark Mode Support",
+    problemStatement:
+      "Users consistently request dark mode across multiple platforms. Feedback indicates eye strain during nighttime use and frustration that this feature has been on the roadmap without delivery.",
+    targetAudience: "All users, particularly those who use the application during evening hours",
+    businessValue:
+      "Dark mode is now considered a baseline feature. Its absence is causing negative reviews and may be contributing to churn among power users who work late hours.",
+    proposedSolution:
+      "Implement a system-wide dark mode toggle that respects OS preferences and allows manual override.",
+    successMetrics: [
+      "Achieve dark mode adoption rate of 40%+ within first month",
+      "Reduce negative reviews mentioning 'dark mode' by 90%",
+      "Improve average App Store rating by 0.2 stars",
+    ],
+    outOfScope: [
+      "Custom theme colors beyond light/dark",
+      "Per-page theme selection",
+      "Dark mode for exported PDFs",
+    ],
+    sourceEvidence: [
+      "PLEASE add dark mode. My eyes are burning at night. This is 2026, every app should have dark mode.",
+      "Dark mode when? Everyone is asking for this. It's been on your roadmap for a year!",
+      "Night owl here - can't use this app past 8pm without getting a headache.",
+    ],
+    wsjf: { businessValue: 7, timeCriticality: 6, riskReduction: 3, effort: 3 },
+    wsjfFinalScore: 7.33,
+    confidenceScore: 0.89,
+    confidenceReason:
+      "Very clear demand signal from multiple sources. Feature is well-understood with established implementation patterns.",
+    criticScore: 0.88,
+    criticIssues: [
+      {
+        criterion: "AMBIGUITY",
+        severity: "warning",
+        field: "proposedSolution",
+        description: "'system-wide' is slightly ambiguous. Recommend specifying which components are included.",
+      },
+    ],
+    status: "approved",
+    reviewerEmail: "sarah@company.com",
+    reviewedAt: "2026-03-13T05:45:00Z",
+    blockchainTxHash: "0x3b1e4c5d6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c",
+    ipfsCid: "QmY8c3lT0qXx4H9S5oW6nZ7rA2wF3eR4tY5uI6oP7aS8dF",
+    createdAt: "2026-03-12T22:00:00Z",
+  },
+  {
+    id: "brd-3",
+    clusterId: "cl-3",
+    title: "Fix Search and Filter Functionality",
+    problemStatement:
+      "Enterprise users report that search with filters is completely non-functional. Combined search and filter queries return no results even when matching items exist. This is blocking core workflows.",
+    targetAudience: "Enterprise users who rely on advanced search for document management",
+    businessValue:
+      "Broken search directly impacts enterprise retention. Enterprise accounts represent 60% of revenue, and search is a core workflow for these users.",
+    proposedSolution:
+      "Debug and fix the search query builder to properly combine text search with filter predicates. Add integration tests for combined queries.",
+    successMetrics: [
+      "100% of filtered search queries return accurate results",
+      "Reduce search-related support tickets by 80%",
+      "Search response time under 500ms for 95th percentile",
+    ],
+    outOfScope: [
+      "Full-text search engine migration",
+      "Saved search functionality",
+      "Search analytics dashboard",
+    ],
+    sourceEvidence: [
+      "Your search is completely broken. Can't find anything when I use filters. Fix this ASAP!",
+      "Tried to search with date filters - zero results. But items are definitely there.",
+      "Our team can't find shared documents anymore since the last update broke filtered search.",
+    ],
+    wsjf: { businessValue: 10, timeCriticality: 9, riskReduction: 8, effort: 3 },
+    wsjfFinalScore: 12.5,
+    confidenceScore: 0.95,
+    confidenceReason:
+      "Clear bug report confirmed by multiple enterprise users. High severity with direct revenue risk. Problem is reproducible and well-defined.",
+    criticScore: 0.94,
+    criticIssues: [],
+    status: "pending_review",
+    reviewerEmail: null,
+    reviewedAt: null,
+    blockchainTxHash: "0x9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a",
+    ipfsCid: "QmZ9d4mU1rYy5I0T6pX7oA8sB3wG4fR5tY6uI7oP8aS9dF",
+    createdAt: "2026-03-13T04:00:00Z",
+  },
+  {
+    id: "brd-4",
+    clusterId: "cl-4",
+    title: "Improve Mobile App Performance",
+    problemStatement:
+      "Users report 10+ second load times on mobile devices. The dashboard is particularly slow, making the mobile experience frustrating compared to competitors.",
+    targetAudience: "Mobile app users across all tiers",
+    businessValue:
+      "Mobile usage represents 45% of total sessions. Poor performance is driving users to competitor apps and generating negative store reviews.",
+    proposedSolution:
+      "Implement lazy loading, optimize API payload sizes, and add client-side caching for the mobile dashboard.",
+    successMetrics: [
+      "Reduce dashboard load time to under 3 seconds on 4G",
+      "Improve mobile-specific App Store rating from 3.2 to 4.0",
+      "Reduce mobile session bounce rate by 40%",
+    ],
+    outOfScope: [
+      "Native app rewrite",
+      "Offline mode",
+      "Push notification optimization",
+    ],
+    sourceEvidence: [
+      "The app is really slow on my phone. Takes 10 seconds to load the dashboard.",
+      "Loading times are ridiculous on mobile. Desktop works fine but mobile is unusable.",
+    ],
+    wsjf: { businessValue: 8, timeCriticality: 7, riskReduction: 5, effort: 6 },
+    wsjfFinalScore: 5.83,
+    confidenceScore: 0.81,
+    confidenceReason:
+      "Clear performance issues reported by multiple users, but the exact cause is not fully diagnosed. Effort estimate may be imprecise.",
+    criticScore: 0.82,
+    criticIssues: [
+      {
+        criterion: "SPECIFICITY",
+        severity: "warning",
+        field: "proposedSolution",
+        description: "Solution mentions 'optimize API payload sizes' without specifying which APIs.",
+      },
+    ],
+    status: "pending_review",
+    reviewerEmail: null,
+    reviewedAt: null,
+    blockchainTxHash: null,
+    ipfsCid: null,
+    createdAt: "2026-03-12T20:30:00Z",
+  },
+  {
+    id: "brd-5",
+    clusterId: "cl-7",
+    title: "Increase API Rate Limits for Enterprise",
+    problemStatement:
+      "Enterprise customers are hitting API rate limits daily, causing integration failures. Current limits are too restrictive for enterprise-scale integrations.",
+    targetAudience: "Enterprise users with custom API integrations",
+    businessValue:
+      "API integrations are a key differentiator for enterprise accounts. Rate limit frustration is a churn risk for highest-value customers.",
+    proposedSolution:
+      "Implement tiered rate limits based on subscription tier. Enterprise gets 10x current limits with burst allowance.",
+    successMetrics: [
+      "Zero rate-limit-related enterprise support tickets per month",
+      "Enterprise API usage increases by 50%",
+      "Enterprise churn rate decreases by 2 percentage points",
+    ],
+    outOfScope: [
+      "Usage-based billing",
+      "API versioning changes",
+      "Rate limit dashboard for users",
+    ],
+    sourceEvidence: [
+      "API rate limits are too low. We hit them every day and our integrations break.",
+      "Please increase rate limits or offer higher tiers. Our automation breaks every afternoon.",
+    ],
+    wsjf: { businessValue: 8, timeCriticality: 7, riskReduction: 7, effort: 4 },
+    wsjfFinalScore: 8.0,
+    confidenceScore: 0.72,
+    confidenceReason:
+      "Feedback is from a small number of enterprise users but very high severity. Confidence slightly lower due to limited sample size.",
+    criticScore: null,
+    criticIssues: [],
+    status: "hitl_queue",
+    reviewerEmail: null,
+    reviewedAt: null,
+    blockchainTxHash: null,
+    ipfsCid: null,
+    createdAt: "2026-03-12T18:00:00Z",
+  },
+  {
+    id: "brd-6",
+    clusterId: "cl-5",
+    title: "Email Notification System for Shared Documents",
+    problemStatement:
+      "Users miss document shares because there is no email notification. They only discover shared documents when they happen to open the application.",
+    targetAudience: "Team collaboration users, especially those who work asynchronously",
+    businessValue:
+      "Notification gaps reduce the value proposition of collaboration features. Teams report missed deadlines due to late discovery of shared documents.",
+    proposedSolution:
+      "Add email notifications for key collaboration events: document shared, comment added, edit request, mention.",
+    successMetrics: [
+      "80% of shared documents are viewed within 2 hours of sharing",
+      "Reduce 'missed document' support tickets by 70%",
+      "Notification delivery rate above 99.5%",
+    ],
+    outOfScope: [
+      "In-app notification center redesign",
+      "SMS notifications",
+      "Notification preferences granularity",
+    ],
+    sourceEvidence: [
+      "Would be great to have email notifications when someone shares a doc with me.",
+      "Currently I only find out about shared docs when I randomly open the app.",
+    ],
+    wsjf: { businessValue: 6, timeCriticality: 5, riskReduction: 4, effort: 5 },
+    wsjfFinalScore: 4.6,
+    confidenceScore: 0.78,
+    confidenceReason:
+      "Clear user need with moderate feedback volume. Standard feature with predictable effort.",
+    criticScore: 0.85,
+    criticIssues: [],
+    status: "approved",
+    reviewerEmail: "mike@company.com",
+    reviewedAt: "2026-03-12T16:00:00Z",
+    blockchainTxHash: "0x5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e",
+    ipfsCid: "QmA0e5nV2sZz6J1U7qY8wC9xD0eF1gH2iJ3kL4mN5oP6qR",
+    createdAt: "2026-03-12T10:00:00Z",
+  },
+  {
+    id: "brd-7",
+    clusterId: "cl-6",
+    title: "Fix PDF Export Formatting Issues",
+    problemStatement:
+      "PDF exports do not preserve document formatting. Headings, tables, and code blocks lose their styling when exported, forcing users to manually reformat in external tools.",
+    targetAudience: "Pro and Enterprise users who share documents externally via PDF",
+    businessValue:
+      "PDF export is a premium feature that justifies the Pro subscription. Poor quality undermines the value proposition and drives negative sentiment.",
+    proposedSolution:
+      "Implement a proper HTML-to-PDF rendering pipeline that preserves all document formatting including tables, headings, and code blocks.",
+    successMetrics: [
+      "95% formatting fidelity between in-app view and PDF export",
+      "Reduce PDF-related support tickets by 85%",
+      "Increase PDF export usage by 50%",
+    ],
+    outOfScope: [
+      "Custom PDF themes",
+      "Watermarking",
+      "Batch PDF export",
+    ],
+    sourceEvidence: [
+      "The export to PDF feature doesn't preserve formatting. Headings, tables, all messed up.",
+      "Had to redo everything in Word after exporting to PDF. This is unacceptable for a paid feature.",
+    ],
+    wsjf: { businessValue: 7, timeCriticality: 5, riskReduction: 4, effort: 5 },
+    wsjfFinalScore: 5.0,
+    confidenceScore: 0.84,
+    confidenceReason:
+      "Well-defined bug with clear reproduction steps. Multiple reports from paying users.",
+    criticScore: 0.87,
+    criticIssues: [],
+    status: "rejected",
+    reviewerEmail: "sarah@company.com",
+    reviewedAt: "2026-03-12T14:00:00Z",
+    blockchainTxHash: null,
+    ipfsCid: null,
+    createdAt: "2026-03-12T08:00:00Z",
+  },
+];
+
+// ============================================
+// Epics Data
+// ============================================
+
+export const mockEpics: Epic[] = [
+  {
+    id: "epic-1",
+    brdId: "brd-2",
+    epicRef: "E001",
+    title: "Core Dark Mode Infrastructure",
+    description:
+      "Establish the foundational theming system and dark mode toggle that all UI components will use.",
+    totalPoints: 13,
+    status: "draft",
+    blockchainTxHash: "0x4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d",
+    userStories: [
+      {
+        id: "us-1",
+        epicId: "epic-1",
+        storyRef: "US001",
+        title: "Theme Toggle Component",
+        storyText:
+          "As a user, I want to toggle between light and dark mode, so that I can choose the visual theme that is most comfortable for my eyes.",
+        storyPoints: 3,
+        priority: "high",
+        needsClarification: false,
+        acceptanceCriteria: [
+          "GIVEN I am on any page, WHEN I click the theme toggle, THEN the entire UI switches between light and dark mode within 200ms",
+          "GIVEN I have selected dark mode, WHEN I close and reopen the app, THEN dark mode is still active (persisted in localStorage)",
+          "GIVEN my OS is set to dark mode, WHEN I open the app for the first time, THEN the app automatically uses dark mode",
+        ],
+        definitionOfDone: [
+          "Unit tests written covering toggle behavior",
+          "E2E test for persistence",
+          "Reviewed by QA on Chrome, Safari, Firefox",
+        ],
+        status: "draft",
+        createdAt: "2026-03-13T05:12:00Z",
+      },
+      {
+        id: "us-2",
+        epicId: "epic-1",
+        storyRef: "US002",
+        title: "CSS Variable Theming System",
+        storyText:
+          "As a developer, I want a CSS variable-based theming system, so that all components automatically adapt to the selected theme without individual styling.",
+        storyPoints: 5,
+        priority: "high",
+        needsClarification: false,
+        acceptanceCriteria: [
+          "GIVEN the theming system is implemented, WHEN dark mode is activated, THEN all color variables update to their dark mode values",
+          "GIVEN a new component is created, WHEN it uses theme variables, THEN it automatically supports both light and dark modes",
+          "GIVEN the theme changes, WHEN CSS variables update, THEN there is no flash of unstyled content (FOUC)",
+        ],
+        definitionOfDone: [
+          "Documentation for theme variable naming conventions",
+          "All existing components migrated to use theme variables",
+          "Reviewed by design team",
+        ],
+        status: "draft",
+        createdAt: "2026-03-13T05:12:00Z",
+      },
+      {
+        id: "us-3",
+        epicId: "epic-1",
+        storyRef: "US003",
+        title: "Dark Mode Color Palette",
+        storyText:
+          "As a designer, I want a carefully crafted dark mode color palette, so that the dark theme is visually appealing and maintains WCAG AA contrast ratios.",
+        storyPoints: 5,
+        priority: "high",
+        needsClarification: false,
+        acceptanceCriteria: [
+          "GIVEN dark mode is active, WHEN any text is displayed, THEN it meets WCAG AA contrast ratio of at least 4.5:1",
+          "GIVEN dark mode is active, WHEN interactive elements are shown, THEN they are visually distinguishable with proper contrast",
+          "GIVEN dark mode is active, WHEN images or charts are displayed, THEN they have appropriate dark mode variants or overlays",
+        ],
+        definitionOfDone: [
+          "Color palette approved by design team",
+          "Accessibility audit completed",
+          "All pages screenshot-tested in both modes",
+        ],
+        status: "draft",
+        createdAt: "2026-03-13T05:12:00Z",
+      },
+    ],
+    createdAt: "2026-03-13T05:12:00Z",
+  },
+  {
+    id: "epic-2",
+    brdId: "brd-2",
+    epicRef: "E002",
+    title: "Component Dark Mode Adaptation",
+    description:
+      "Update all existing UI components to properly render in dark mode using the theming infrastructure.",
+    totalPoints: 8,
+    status: "draft",
+    blockchainTxHash: "0x4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d",
+    userStories: [
+      {
+        id: "us-4",
+        epicId: "epic-2",
+        storyRef: "US004",
+        title: "Navigation & Layout Dark Mode",
+        storyText:
+          "As a user, I want the navigation bar and page layouts to look clean in dark mode, so that the overall app structure is visually consistent.",
+        storyPoints: 3,
+        priority: "high",
+        needsClarification: false,
+        acceptanceCriteria: [
+          "GIVEN dark mode is active, WHEN I view the sidebar, THEN it uses dark theme colors with proper contrast",
+          "GIVEN dark mode is active, WHEN I hover over nav items, THEN hover states are visible and accessible",
+          "GIVEN dark mode is active, WHEN I view the top header, THEN branding and icons adapt to dark theme",
+        ],
+        definitionOfDone: [
+          "All navigation elements tested in dark mode",
+          "Screenshots captured for design review",
+          "No console warnings related to theming",
+        ],
+        status: "draft",
+        createdAt: "2026-03-13T05:12:00Z",
+      },
+      {
+        id: "us-5",
+        epicId: "epic-2",
+        storyRef: "US005",
+        title: "Form & Input Dark Mode",
+        storyText:
+          "As a user, I want all form inputs, buttons, and interactive elements to properly render in dark mode, so that I can comfortably complete actions.",
+        storyPoints: 5,
+        priority: "medium",
+        needsClarification: false,
+        acceptanceCriteria: [
+          "GIVEN dark mode is active, WHEN I view any form, THEN input fields have visible borders and readable placeholder text",
+          "GIVEN dark mode is active, WHEN I focus on an input, THEN the focus ring is visible against the dark background",
+          "GIVEN dark mode is active, WHEN buttons are displayed, THEN primary and secondary variants are visually distinct",
+        ],
+        definitionOfDone: [
+          "All form components tested",
+          "Validation states visible in dark mode",
+          "Reviewed by QA",
+        ],
+        status: "draft",
+        createdAt: "2026-03-13T05:12:00Z",
+      },
+    ],
+    createdAt: "2026-03-13T05:12:00Z",
+  },
+  {
+    id: "epic-3",
+    brdId: "brd-6",
+    epicRef: "E003",
+    title: "Email Notification Service",
+    description:
+      "Build the backend email notification system for document sharing and collaboration events.",
+    totalPoints: 13,
+    status: "draft",
+    blockchainTxHash: "0x6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f",
+    userStories: [
+      {
+        id: "us-6",
+        epicId: "epic-3",
+        storyRef: "US006",
+        title: "Document Shared Notification",
+        storyText:
+          "As a user, I want to receive an email when someone shares a document with me, so that I can review it promptly.",
+        storyPoints: 5,
+        priority: "high",
+        needsClarification: false,
+        acceptanceCriteria: [
+          "GIVEN a document is shared with me, WHEN the share action is completed, THEN I receive an email within 5 minutes",
+          "GIVEN I receive a notification email, WHEN I click the link, THEN I am taken directly to the shared document",
+          "GIVEN I have email notifications disabled, WHEN a document is shared, THEN no email is sent",
+        ],
+        definitionOfDone: [
+          "Email template designed and approved",
+          "Integration tests with email service",
+          "Unsubscribe link tested",
+        ],
+        status: "draft",
+        createdAt: "2026-03-12T20:00:00Z",
+      },
+      {
+        id: "us-7",
+        epicId: "epic-3",
+        storyRef: "US007",
+        title: "Comment Notification",
+        storyText:
+          "As a user, I want to receive an email when someone comments on my document, so that I can respond to feedback quickly.",
+        storyPoints: 3,
+        priority: "medium",
+        needsClarification: false,
+        acceptanceCriteria: [
+          "GIVEN someone comments on my document, WHEN the comment is saved, THEN I receive an email within 5 minutes",
+          "GIVEN multiple comments are made within 10 minutes, WHEN notifications are sent, THEN they are batched into a single email",
+          "GIVEN I am the commenter, WHEN I comment on my own document, THEN no notification is sent to me",
+        ],
+        definitionOfDone: [
+          "Comment batching logic tested",
+          "Email template includes comment preview",
+          "Reviewed by QA",
+        ],
+        status: "draft",
+        createdAt: "2026-03-12T20:00:00Z",
+      },
+      {
+        id: "us-8",
+        epicId: "epic-3",
+        storyRef: "US008",
+        title: "Notification Preferences",
+        storyText:
+          "As a user, I want to manage my email notification preferences, so that I only receive the notifications I care about.",
+        storyPoints: 5,
+        priority: "medium",
+        needsClarification: false,
+        acceptanceCriteria: [
+          "GIVEN I am in settings, WHEN I view notification preferences, THEN I can toggle each notification type on/off",
+          "GIVEN I disable a notification type, WHEN that event occurs, THEN no email is sent for that type",
+          "GIVEN I click 'unsubscribe all' in an email, WHEN the link is processed, THEN all email notifications are disabled",
+        ],
+        definitionOfDone: [
+          "Settings UI implemented",
+          "Preferences persisted to database",
+          "Unsubscribe link functional",
+        ],
+        status: "draft",
+        createdAt: "2026-03-12T20:00:00Z",
+      },
+    ],
+    createdAt: "2026-03-12T20:00:00Z",
+  },
+];
+
+// ============================================
+// Audit Records Data
+// ============================================
+
+export const mockAuditRecords: AuditRecord[] = [
+  {
+    id: "aud-1",
+    recordId: "brd-1",
+    eventType: "BRD_GENERATED",
+    contentHash: "0x7a8f1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a",
+    ipfsCid: "QmX7b2kS9pWx3G8R4nV5mY6qZ1wE2rT3yU4iO5pA6sD7fG",
+    txHash: "0xabc123def456789012345678901234567890abcdef1234567890abcdef12345678",
+    actor: "AI Analyst Agent",
+    createdAt: "2026-03-13T06:25:00Z",
+  },
+  {
+    id: "aud-2",
+    recordId: "brd-2",
+    eventType: "BRD_GENERATED",
+    contentHash: "0x3b1e4c5d6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c",
+    ipfsCid: "QmY8c3lT0qXx4H9S5oW6nZ7rA2wF3eR4tY5uI6oP7aS8dF",
+    txHash: "0xdef456789012345678901234567890abcdef1234567890abcdef123456789012",
+    actor: "AI Analyst Agent",
+    createdAt: "2026-03-12T22:00:00Z",
+  },
+  {
+    id: "aud-3",
+    recordId: "brd-2",
+    eventType: "BRD_APPROVED",
+    contentHash: "0x4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d",
+    ipfsCid: "QmZ9d4mU1rYy5I0T6pX7oA8sB3wG4fR5tY6uI7oP8aS9dF",
+    txHash: "0x123456789012345678901234567890abcdef1234567890abcdef1234567890ab",
+    actor: "sarah@company.com",
+    createdAt: "2026-03-13T05:45:00Z",
+  },
+  {
+    id: "aud-4",
+    recordId: "epic-1",
+    eventType: "EPIC_CREATED",
+    contentHash: "0x5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e",
+    ipfsCid: "QmA0e5nV2sZz6J1U7qY8wC9xD0eF1gH2iJ3kL4mN5oP6qR",
+    txHash: "0x456789012345678901234567890abcdef1234567890abcdef12345678901234",
+    actor: "AI Story Writer",
+    createdAt: "2026-03-13T05:12:00Z",
+  },
+  {
+    id: "aud-5",
+    recordId: "brd-3",
+    eventType: "BRD_GENERATED",
+    contentHash: "0x9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a",
+    ipfsCid: "QmB1f6oW3tAa7K2V8rZ9xD0eF1gH2iJ3kL4mN5oP6qR7sT",
+    txHash: "0x789012345678901234567890abcdef1234567890abcdef123456789012345678",
+    actor: "AI Analyst Agent",
+    createdAt: "2026-03-13T04:00:00Z",
+  },
+  {
+    id: "aud-6",
+    recordId: "priority-batch-1",
+    eventType: "PRIORITY_SET",
+    contentHash: "0x6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f",
+    ipfsCid: "QmC2g7pX4uBb8L3W9sA0yE1fG2hI3jK4lM5nO6pQ7rS8tU",
+    txHash: "0x901234567890abcdef1234567890abcdef12345678901234567890abcdef1234",
+    actor: "sarah@company.com",
+    createdAt: "2026-03-12T18:30:00Z",
+  },
+  {
+    id: "aud-7",
+    recordId: "epic-3",
+    eventType: "EPIC_CREATED",
+    contentHash: "0x7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a",
+    ipfsCid: "QmD3h8qY5vCc9M4X0tB1zF2gH3iJ4kL5mN6oP7qR8sT9uV",
+    txHash: "0xabcdef1234567890abcdef12345678901234567890abcdef12345678901234ab",
+    actor: "AI Story Writer",
+    createdAt: "2026-03-12T20:01:00Z",
+  },
+  {
+    id: "aud-8",
+    recordId: "brd-6",
+    eventType: "BRD_APPROVED",
+    contentHash: "0x8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b",
+    ipfsCid: "QmE4i9rZ6wDd0N5Y1uC2aG3hI4jK5lM6nO7pQ8rS9tU0vW",
+    txHash: "0xcdef1234567890abcdef12345678901234567890abcdef12345678901234abcd",
+    actor: "mike@company.com",
+    createdAt: "2026-03-12T16:00:00Z",
+  },
+  {
+    id: "aud-9",
+    recordId: "sa-brief-1",
+    eventType: "SA_DELIVERY",
+    contentHash: "0x0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d",
+    ipfsCid: "QmF5j0sA7xEe1O6Z2vD3bH4iJ5kL6mN7oP8qR9sT0uV1wX",
+    txHash: "0xef1234567890abcdef12345678901234567890abcdef12345678901234abcdef",
+    actor: "AI SA Brief Agent",
+    createdAt: "2026-03-12T15:00:00Z",
+  },
+  {
+    id: "aud-10",
+    recordId: "brd-2",
+    eventType: "BRD_EDITED",
+    contentHash: "0x1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e",
+    ipfsCid: "QmG6k1tB8yFf2P7A3wE4cI5jK6lM7nO8pQ9rS0tU1vW2xY",
+    txHash: "0x1234567890abcdef12345678901234567890abcdef12345678901234abcdef12",
+    actor: "sarah@company.com",
+    createdAt: "2026-03-12T12:00:00Z",
+  },
+];
