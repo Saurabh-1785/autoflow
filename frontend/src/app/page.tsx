@@ -99,46 +99,41 @@ export default function LandingPage() {
 
   return (
     <div
-      className={`min-h-screen overflow-x-hidden transition-colors duration-300 ${
-        dark ? "bg-[#0a0e1a] text-slate-200" : "bg-white text-slate-800"
-      }`}
+      className={`min-h-screen overflow-x-hidden transition-colors duration-300 ${dark ? "bg-[#0a0e1a] text-slate-200" : "bg-white text-slate-800"
+        }`}
     >
       {/* ===== FIXED NAVBAR ===== */}
       <nav
-        className={`fixed top-0 left-0 right-0 z-100 px-6 md:px-12 py-3.5 flex items-center justify-between transition-all duration-300 ${
-          scrolled
+        className={`fixed top-0 left-0 right-0 z-100 px-6 md:px-12 py-3.5 flex items-center justify-between transition-all duration-300 ${scrolled
             ? dark
               ? "bg-[#0a0e1a]/95 shadow-lg shadow-black/20 border-b border-white/5"
               : "bg-white/95 shadow-md shadow-black/5 border-b border-slate-200"
             : dark
               ? "bg-transparent"
               : "bg-transparent"
-        }`}
+          }`}
         style={{ backdropFilter: scrolled ? "blur(16px)" : "none" }}
       >
         <div />
         <div className="flex items-center gap-2 md:gap-4">
           <a
             href="#features"
-            className={`text-sm font-medium px-3 py-1.5 no-underline transition-colors ${
-              dark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"
-            }`}
+            className={`text-sm font-medium px-3 py-1.5 no-underline transition-colors ${dark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"
+              }`}
           >
             Features
           </a>
           <a
             href="#pipeline"
-            className={`text-sm font-medium px-3 py-1.5 no-underline transition-colors ${
-              dark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"
-            }`}
+            className={`text-sm font-medium px-3 py-1.5 no-underline transition-colors ${dark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"
+              }`}
           >
             Pipeline
           </a>
           <a
             href="#tech"
-            className={`text-sm font-medium px-3 py-1.5 no-underline transition-colors ${
-              dark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"
-            }`}
+            className={`text-sm font-medium px-3 py-1.5 no-underline transition-colors ${dark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"
+              }`}
           >
             Tech Stack
           </a>
@@ -146,11 +141,10 @@ export default function LandingPage() {
           {/* Theme Toggle */}
           <button
             onClick={() => setDark(!dark)}
-            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer border ${
-              dark
+            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer border ${dark
                 ? "bg-white/10 border-white/10 hover:bg-white/20 text-yellow-400"
                 : "bg-slate-100 border-slate-200 hover:bg-slate-200 text-slate-600"
-            }`}
+              }`}
             aria-label="Toggle theme"
           >
             {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -189,11 +183,10 @@ export default function LandingPage() {
 
           {/* Badge */}
           <div
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8 animate-fade-in ${
-              dark
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8 animate-fade-in ${dark
                 ? "bg-blue-500/10 border border-blue-500/20"
                 : "bg-blue-50 border border-blue-200"
-            }`}
+              }`}
             style={{ animationDelay: "0.1s" }}
           >
             <Sparkles className="w-4 h-4 text-blue-600" />
@@ -203,25 +196,20 @@ export default function LandingPage() {
           </div>
 
           <h2
-            className={`text-3xl md:text-4xl lg:text-5xl font-extrabold leading-[1.15] tracking-tight mb-6 animate-fade-in ${
-              dark ? "text-white" : "text-slate-900"
-            }`}
+            className={`text-3xl md:text-4xl lg:text-5xl font-extrabold leading-[1.15] tracking-tight mb-6 animate-fade-in ${dark ? "text-white" : "text-slate-900"
+              }`}
             style={{ animationDelay: "0.2s" }}
           >
             From Customer Feedback<br />
-            to Engineering Epics —{" "}
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              in 48 Hours
-            </span>
+            to Engineering Epics {" "}
           </h2>
 
           <p
-            className={`text-lg md:text-xl max-w-2xl mx-auto mb-10 animate-fade-in leading-relaxed ${
-              dark ? "text-slate-400" : "text-slate-500"
-            }`}
+            className={`text-lg md:text-xl max-w-2xl mx-auto mb-10 animate-fade-in leading-relaxed ${dark ? "text-slate-400" : "text-slate-500"
+              }`}
             style={{ animationDelay: "0.3s" }}
           >
-            AutoFlow Intelligence automates the journey from raw user feedback to
+            AutoFlow automates the journey from raw user feedback to
             architect-ready Engineering Epics with a transparent, blockchain-audited
             Human-in-the-Loop AI pipeline.
           </p>
@@ -237,11 +225,10 @@ export default function LandingPage() {
             </Link>
             <a
               href="#pipeline"
-              className={`text-base font-semibold px-8 py-3.5 rounded-lg no-underline inline-flex items-center gap-2 transition-all border ${
-                dark
+              className={`text-base font-semibold px-8 py-3.5 rounded-lg no-underline inline-flex items-center gap-2 transition-all border ${dark
                   ? "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
                   : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
-              }`}
+                }`}
             >
               See How It Works
               <ChevronDown className="w-5 h-5" />
@@ -251,11 +238,10 @@ export default function LandingPage() {
           {/* Hero Image */}
           <div className="mt-16 relative animate-fade-in" style={{ animationDelay: "0.55s" }}>
             <div
-              className={`relative rounded-2xl overflow-hidden shadow-2xl ${
-                dark
+              className={`relative rounded-2xl overflow-hidden shadow-2xl ${dark
                   ? "border border-white/8 shadow-blue-500/10"
                   : "border border-slate-200 shadow-slate-300/50"
-              }`}
+                }`}
             >
               <Image
                 src="/images/hero-dashboard.png"
@@ -272,20 +258,18 @@ export default function LandingPage() {
 
       {/* ===== PROBLEM SECTION ===== */}
       <section
-        className={`py-24 px-6 border-t ${
-          dark ? "border-white/5" : "border-slate-100"
-        }`}
+        className={`py-24 px-6 border-t ${dark ? "border-white/5" : "border-slate-100"
+          }`}
       >
         <div className="max-w-5xl mx-auto">
           <ScrollSection animation="scroll-fade-up">
             <div className="text-center mb-16">
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-amber-500 mb-4 block">
+              <span className="text-xl font-bold uppercase tracking-[0.2em] text-amber-500 mb-4 block">
                 The Problem
               </span>
               <h2
-                className={`text-3xl md:text-4xl font-bold mb-4 ${
-                  dark ? "text-white" : "text-slate-900"
-                }`}
+                className={`text-3xl md:text-4xl font-bold mb-4 ${dark ? "text-white" : "text-slate-900"
+                  }`}
               >
                 Product teams waste{" "}
                 <span className="text-amber-500">4–7 weeks</span> translating
@@ -306,16 +290,14 @@ export default function LandingPage() {
             ].map((card, i) => (
               <ScrollSection key={card.stat} animation="scroll-fade-up" delay={i * 150}>
                 <div
-                  className={`p-6 rounded-2xl text-center h-full transition-all ${
-                    dark
+                  className={`p-6 rounded-2xl text-center h-full transition-all ${dark
                       ? "bg-white/[0.03] border border-white/6 hover:border-white/12"
                       : "bg-white border border-slate-200 shadow-sm hover:shadow-md"
-                  }`}
+                    }`}
                 >
                   <div
-                    className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 ${
-                      dark ? "bg-white/5" : "bg-slate-50"
-                    }`}
+                    className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 ${dark ? "bg-white/5" : "bg-slate-50"
+                      }`}
                   >
                     {card.icon}
                   </div>
@@ -338,16 +320,15 @@ export default function LandingPage() {
       {/* ===== PIPELINE SECTION ===== */}
       <section
         id="pipeline"
-        className={`py-24 px-6 border-t ${
-          dark
+        className={`py-24 px-6 border-t ${dark
             ? "border-white/5 bg-gradient-to-b from-transparent via-blue-500/[0.02] to-transparent"
             : "border-slate-100 bg-gradient-to-b from-slate-50 via-blue-50/30 to-white"
-        }`}
+          }`}
       >
         <div className="max-w-6xl mx-auto">
           <ScrollSection animation="scroll-fade-up">
             <div className="text-center mb-16">
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 mb-4 block">
+              <span className="text-xl font-bold uppercase tracking-[0.2em] text-blue-600 mb-4 block">
                 How It Works
               </span>
               <h2 className={`text-3xl md:text-4xl font-bold mb-4 ${dark ? "text-white" : "text-slate-900"}`}>
@@ -364,11 +345,10 @@ export default function LandingPage() {
             {pipelineSteps.map((step, i) => (
               <ScrollSection key={step.label} animation="scroll-fade-up" delay={i * 80}>
                 <div
-                  className={`p-5 rounded-xl text-center group hover:scale-[1.03] transition-all border ${
-                    dark
+                  className={`p-5 rounded-xl text-center group hover:scale-[1.03] transition-all border ${dark
                       ? "bg-white/[0.03] border-white/6 hover:border-white/15"
                       : "bg-white border-slate-200 shadow-sm hover:shadow-md"
-                  }`}
+                    }`}
                 >
                   <div
                     className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform"
@@ -400,7 +380,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <ScrollSection animation="scroll-fade-up">
             <div className="text-center mb-20">
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-purple-600 mb-4 block">
+              <span className="text-xl font-bold uppercase tracking-[0.2em] text-purple-600 mb-4 block">
                 Key Features
               </span>
               <h2 className={`text-3xl md:text-4xl font-bold ${dark ? "text-white" : "text-slate-900"}`}>
@@ -499,11 +479,10 @@ export default function LandingPage() {
       {/* ===== TECH STACK ===== */}
       <section
         id="tech"
-        className={`py-24 px-6 border-t ${
-          dark
+        className={`py-24 px-6 border-t ${dark
             ? "border-white/5 bg-gradient-to-b from-transparent via-purple-500/[0.02] to-transparent"
             : "border-slate-100 bg-gradient-to-b from-slate-50 via-purple-50/20 to-white"
-        }`}
+          }`}
       >
         <div className="max-w-5xl mx-auto">
           <ScrollSection animation="scroll-fade-up">
@@ -521,11 +500,10 @@ export default function LandingPage() {
             {techStack.map((tech, i) => (
               <ScrollSection key={tech.name} animation="scroll-scale-up" delay={i * 60}>
                 <div
-                  className={`p-4 rounded-xl text-center transition-all group border ${
-                    dark
+                  className={`p-4 rounded-xl text-center transition-all group border ${dark
                       ? "bg-white/[0.03] border-white/6 hover:border-white/15 hover:bg-white/[0.06]"
                       : "bg-white border-slate-200 hover:border-blue-300 hover:shadow-md"
-                  }`}
+                    }`}
                 >
                   <p className={`text-sm font-bold group-hover:text-blue-600 transition-colors ${dark ? "text-white" : "text-slate-800"}`}>
                     {tech.name}
@@ -592,11 +570,10 @@ export default function LandingPage() {
 function FeatureImage({ dark, src, alt }: { dark: boolean; src: string; alt: string }) {
   return (
     <div
-      className={`rounded-2xl overflow-hidden transition-all ${
-        dark
+      className={`rounded-2xl overflow-hidden transition-all ${dark
           ? "border border-white/8 shadow-xl shadow-blue-500/5"
           : "border border-slate-200 shadow-lg shadow-slate-200/60"
-      }`}
+        }`}
     >
       <Image src={src} alt={alt} width={700} height={480} className="w-full h-auto" />
     </div>

@@ -133,6 +133,21 @@
   border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
+.sidebar-link-light {
+  color: #64748b;
+}
+
+.sidebar-link-light:hover {
+  color: #0f172a;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.sidebar-link-light.active {
+  color: #2563eb;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
 /* ============================================
    Buttons
    ============================================ */
@@ -627,3 +642,227 @@
   height: 2px;
   background: linear-gradient(90deg, rgba(59,130,246,0.4) 0%, rgba(139,92,246,0.4) 100%);
 }
+
+/* ============================================
+   Pipeline Dashboard — Step Animations
+   ============================================ */
+
+/* Step transition */
+@keyframes step-enter {
+  from { opacity: 0; transform: translateY(30px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.step-enter {
+  animation: step-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Glowing card */
+.pipeline-card {
+  background: linear-gradient(135deg, rgba(15, 21, 41, 0.9), rgba(21, 29, 53, 0.7));
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  box-shadow: 0 0 60px rgba(59, 130, 246, 0.06), 0 8px 32px rgba(0,0,0,0.3);
+  transition: border-color 0.3s ease;
+}
+.pipeline-card:hover {
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+/* Floating particle */
+@keyframes float-particle {
+  0% { transform: translateY(80px) translateX(0) scale(0); opacity: 0; }
+  20% { opacity: 1; transform: translateY(40px) translateX(10px) scale(1); }
+  100% { transform: translateY(-120px) translateX(-5px) scale(0.3); opacity: 0; }
+}
+
+/* Data stream */
+@keyframes data-stream {
+  0% { transform: translateX(-100%) scaleX(0.5); opacity: 0; }
+  30% { opacity: 1; transform: translateX(0) scaleX(1); }
+  100% { transform: translateX(200%) scaleX(0.5); opacity: 0; }
+}
+
+/* Pulse ring */
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* Orbit */
+@keyframes orbit {
+  from { transform: rotate(0deg) translateX(60px) rotate(0deg); }
+  to { transform: rotate(360deg) translateX(60px) rotate(-360deg); }
+}
+
+/* Scan line */
+@keyframes scan-line {
+  0% { top: 0; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* Merge animation */
+@keyframes merge-in {
+  0% { transform: translate(var(--tx, 0), var(--ty, 0)) scale(0.8); opacity: 0.3; }
+  100% { transform: translate(0, 0) scale(1); opacity: 1; }
+}
+
+/* Rank slide */
+@keyframes rank-slide {
+  0% { transform: translateX(40px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+/* Chain link */
+@keyframes chain-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(6, 182, 212, 0.3); }
+  50% { box-shadow: 0 0 24px rgba(6, 182, 212, 0.6); }
+}
+
+/* Progress bar fill */
+@keyframes progress-fill {
+  from { width: 0; }
+}
+
+/* Typing cursor */
+@keyframes blink-cursor {
+  0%, 50% { border-right-color: #3b82f6; }
+  51%, 100% { border-right-color: transparent; }
+}
+
+/* Glow border */
+@keyframes glow-border {
+  0%, 100% { border-color: rgba(59, 130, 246, 0.2); box-shadow: 0 0 20px rgba(59, 130, 246, 0.05); }
+  50% { border-color: rgba(59, 130, 246, 0.4); box-shadow: 0 0 40px rgba(59, 130, 246, 0.1); }
+}
+.glow-border-anim {
+  animation: glow-border 3s ease-in-out infinite;
+}
+
+/* Step progress dots */
+.step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transition: all 0.4s ease;
+}
+.step-dot.completed { background: #10b981; box-shadow: 0 0 6px rgba(16, 185, 129, 0.4); }
+.step-dot.active { background: #3b82f6; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); animation: pulse-dot 2s infinite; }
+.step-dot.pending { background: rgba(255, 255, 255, 0.1); }
+
+/* ============================================
+   Dashboard Light Theme
+   ============================================ */
+
+.dashboard-theme-light .dashboard-flow {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.dashboard-theme-light .dashboard-flow .pipeline-card {
+  background: #ffffff;
+  border: 1px solid rgba(59, 130, 246, 0.14);
+  box-shadow: 0 10px 40px rgba(59, 130, 246, 0.08);
+}
+
+.dashboard-theme-light .dashboard-flow .pipeline-card:hover {
+  border-color: rgba(59, 130, 246, 0.24);
+}
+
+.dashboard-theme-light .dashboard-flow .step-dot.pending {
+  background: rgba(148, 163, 184, 0.45);
+}
+
+.dashboard-theme-light .dashboard-flow .text-white {
+  color: #0f172a;
+}
+
+.dashboard-theme-light .dashboard-flow .text-slate-300 {
+  color: #334155;
+}
+
+.dashboard-theme-light .dashboard-flow .text-slate-400,
+.dashboard-theme-light .dashboard-flow .text-slate-500 {
+  color: #64748b;
+}
+
+.dashboard-theme-light .dashboard-flow .text-slate-600,
+.dashboard-theme-light .dashboard-flow .text-slate-700 {
+  color: #94a3b8;
+}
+
+.dashboard-theme-light .dashboard-flow [class*="bg-white/[0.03]"],
+.dashboard-theme-light .dashboard-flow [class*="bg-white/[0.04]"],
+.dashboard-theme-light .dashboard-flow [class*="bg-white/5"] {
+  background-color: #f8fbff;
+}
+
+.dashboard-theme-light .dashboard-flow [class*="border-white/5"],
+.dashboard-theme-light .dashboard-flow [class*="border-white/10"] {
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+.dashboard-theme-light .dashboard-flow [class*="shadow-emerald-500/20"] {
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.18);
+}
+
+.dashboard-theme-light .glass-card,
+.dashboard-theme-light .glass-card-static {
+  background: #ffffff;
+  border: 1px solid rgba(59, 130, 246, 0.14);
+  box-shadow: 0 6px 24px rgba(59, 130, 246, 0.08);
+}
+
+.dashboard-theme-light .glass-card:hover {
+  border-color: rgba(59, 130, 246, 0.22);
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.12);
+}
+
+.dashboard-theme-light .badge {
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.dashboard-theme-light .btn-secondary {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e3a8a;
+}
+
+.dashboard-theme-light .btn-secondary:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.dashboard-theme-light [class*="text-white"] {
+  color: #0f172a;
+}
+
+.dashboard-theme-light [class*="text-slate-200"],
+.dashboard-theme-light [class*="text-slate-300"] {
+  color: #334155;
+}
+
+.dashboard-theme-light [class*="text-slate-400"],
+.dashboard-theme-light [class*="text-slate-500"] {
+  color: #64748b;
+}
+
+.dashboard-theme-light [class*="text-slate-600"],
+.dashboard-theme-light [class*="text-slate-700"] {
+  color: #94a3b8;
+}
+
+.dashboard-theme-light [class*="bg-white/5"],
+.dashboard-theme-light [class*="bg-white/10"],
+.dashboard-theme-light [class*="bg-white/[0.03]"],
+.dashboard-theme-light [class*="bg-white/[0.04]"] {
+  background-color: #f8fbff;
+}
+
+.dashboard-theme-light [class*="border-white/5"],
+.dashboard-theme-light [class*="border-white/8"],
+.dashboard-theme-light [class*="border-white/10"] {
+  border-color: rgba(148, 163, 184, 0.3);
+}
+

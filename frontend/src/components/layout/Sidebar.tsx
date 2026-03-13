@@ -12,6 +12,7 @@ import {
   Settings,
   Zap,
 } from "lucide-react";
+import { useDashboardTheme } from "./DashboardThemeContext";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -25,9 +26,17 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { theme } = useDashboardTheme();
+  const isLight = theme === "light";
 
   return (
-    <aside className="sidebar w-64 flex-shrink-0 flex flex-col h-screen">
+    <aside
+      className={`w-64 flex-shrink-0 flex flex-col h-screen border-r ${
+        isLight
+          ? "bg-gradient-to-b from-white to-blue-50/40 border-blue-100"
+          : "sidebar border-white/6"
+      }`}
+    >
       {/* Logo */}
       <div className="p-6 pb-2">
         <Link href="/dashboard" className="flex items-center gap-3 no-underline">
@@ -35,10 +44,10 @@ export function Sidebar() {
             <Zap className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-white tracking-tight leading-none">
+            <h1 className={`text-base font-bold tracking-tight leading-none ${isLight ? "text-slate-900" : "text-white"}`}>
               AutoFlow
             </h1>
-            <p className="text-[10px] font-medium text-blue-400/70 uppercase tracking-widest mt-0.5">
+            <p className={`text-[10px] font-medium uppercase tracking-widest mt-0.5 ${isLight ? "text-blue-600/70" : "text-blue-400/70"}`}>
               Intelligence
             </p>
           </div>
@@ -54,7 +63,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`sidebar-link ${isActive ? "active" : ""}`}
+              className={`sidebar-link ${isActive ? "active" : ""} ${isLight ? "sidebar-link-light" : ""}`}
             >
               <item.icon className="w-[18px] h-[18px]" />
               {item.label}
@@ -64,17 +73,17 @@ export function Sidebar() {
       </nav>
 
       {/* Bottom */}
-      <div className="p-4 border-t border-white/5">
-        <div className="glass-card-static p-3">
+      <div className={`p-4 border-t ${isLight ? "border-blue-100" : "border-white/5"}`}>
+        <div className={`p-3 rounded-2xl border ${isLight ? "bg-white border-blue-100" : "glass-card-static"}`}>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
               PM
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-white truncate">
+              <p className={`text-xs font-semibold truncate ${isLight ? "text-slate-800" : "text-white"}`}>
                 Demo User
               </p>
-              <p className="text-[10px] text-slate-500 truncate">
+              <p className={`text-[10px] truncate ${isLight ? "text-slate-500" : "text-slate-500"}`}>
                 pm@autoflow.io
               </p>
             </div>
