@@ -1,128 +1,272 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { clearPipelineRunSession, markPipelineRun } from "@/lib/pipeline-session";
-import { Play, CircleDashed, CheckCircle2, FileText, Settings, Database, Network } from "lucide-react";
+import { Play, CircleDashed, CheckCircle2, FileText, Settings, Database, Network, Server, User, ListChecks } from "lucide-react";
 import Link from "next/link";
+
+const STAGES = [
+  "Feedback Source Selected",
+  "Data Ingestion",
+  "Clustering",
+  "Analyst Agent",
+  "Critic Agent",
+  "Story Writer Agent"
+];
 
 export default function DashboardPage() {
   const [isRunning, setIsRunning] = useState(false);
   const [runFinished, setRunFinished] = useState(false);
+  const [source, setSource] = useState("csv");
+  const [logs, setLogs] = useState<any[]>([]);
+  const [summary, setSummary] = useState<any>(null);
+  const [currentStageIndex, setCurrentStageIndex] = useState(-1);
+
+  // Poll for pipeline summary while running
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (isRunning) {
+      interval = setInterval(async () => {
+        try {
+          const res = await api.getPipelineSummary();
+          if (res.success && res.data) {
+            setLogs(res.data.logs);
+            setSummary(res.data.counts);
+
+            // Determine current stage based on logs
+            const logText = res.data.logs.map((l: any) => l.stage.toLowerCase()).join(" ");
+            let stageIdx = 0;
+            if (logText.includes("ingestion") || logText.includes("normalize")) stageIdx = 1;
+            if (logText.includes("cluster agent")) stageIdx = 2;
+            if (logText.includes("analyst agent")) stageIdx = 3;
+            if (logText.includes("critic agent")) stageIdx = 4;
+            if (logText.includes("story writer agent")) {
+              stageIdx = 5;
+              // If Story Writer has finished, pipeline is functionally complete for the automated part
+              if (!runFinished) {
+                setIsRunning(false);
+                setRunFinished(true);
+              }
+            }
+            setCurrentStageIndex(stageIdx);
+          }
+        } catch (error) {
+          console.error("Failed to fetch pipeline summary during polling", error);
+        }
+      }, 2000); // Poll every 2 seconds
+    }
+
+    return () => clearInterval(interval);
+  }, [isRunning, runFinished]);
 
   const startPipeline = async () => {
     clearPipelineRunSession();
     setIsRunning(true);
     setRunFinished(false);
+    setLogs([]);
+    setSummary(null);
+    setCurrentStageIndex(0);
 
     try {
-      // Trigger the real n8n backend workflow (01_data_ingestion)
-      await api.triggerPipeline();
+      await api.triggerPipeline(source);
       markPipelineRun();
-      
-      // Simulate network wait for better UX
-      setTimeout(() => {
-        setIsRunning(false);
-        setRunFinished(true);
-      }, 1500);
     } catch (err) {
       console.error("Pipeline trigger failed:", err);
       clearPipelineRunSession();
       setIsRunning(false);
-      alert("Failed to trigger pipeline. Backend is reachable, but n8n webhook/workflow is not active or reachable.");
+      alert("Failed to trigger pipeline. Backend ensures n8n is unreachable.");
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pt-8">
-      {/* 
-        Data Flow Visualizer 
-      */}
-      <div className="glass-card-static bg-white border border-blue-100 rounded-xl p-8 mb-8 shadow-sm">
-         <h2 className="text-xl font-bold text-slate-900 text-center mb-8">AutoFlow Integration Architecture</h2>
-         
-         <div className="flex flex-col md:flex-row items-center justify-between gap-4 max-w-2xl mx-auto">
-            {/* Step 1: Google Sheets */}
-            <div className="flex flex-col items-center gap-2 text-center w-32">
-               <div className="w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center border-2 border-emerald-300">
-                  <Database className="w-8 h-8 text-emerald-600" />
-               </div>
-               <p className="text-sm font-semibold text-slate-800">Google Sheets</p>
-               <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Raw Data</p>
-            </div>
+    <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pt-8">
 
-            <div className="h-0.5 w-16 bg-slate-300 hidden md:block relative">
-               <div className="absolute right-0 top-1/2 -mt-1.5 w-3 h-3 border-t-2 border-r-2 border-slate-300 transform rotate-45"></div>
-            </div>
-
-            {/* Step 2: n8n Backend */}
-            <div className="flex flex-col items-center gap-2 text-center w-32">
-               <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center border-2 border-blue-300">
-                  <Network className="w-8 h-8 text-blue-600" />
-               </div>
-               <p className="text-sm font-semibold text-slate-800">n8n Pipeline</p>
-               <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">AI Agents (Gemini)</p>
-            </div>
-
-            <div className="h-0.5 w-16 bg-slate-300 hidden md:block relative">
-               <div className="absolute right-0 top-1/2 -mt-1.5 w-3 h-3 border-t-2 border-r-2 border-slate-300 transform rotate-45"></div>
-            </div>
-
-            {/* Step 3: AutoFlow UI */}
-            <div className="flex flex-col items-center gap-2 text-center w-32">
-               <div className="w-16 h-16 rounded-2xl bg-purple-100 flex items-center justify-center border-2 border-purple-300">
-                  <Settings className="w-8 h-8 text-purple-600" />
-               </div>
-               <p className="text-sm font-semibold text-slate-800">AutoFlow UI</p>
-               <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Postgres DB</p>
-            </div>
-         </div>
-      </div>
-
-      {/* 
-         Trigger Controls 
-      */}
-      <div className="glass-card p-12 text-center space-y-6 shadow-md border border-white/20">
-        <h1 className="text-3xl font-bold text-white mb-2">Trigger AutoFlow Pipeline</h1>
+      {/* Trigger Controls & Source Selection */}
+      <div className="glass-card p-8 text-center space-y-6 shadow-md border border-white/20">
+        <h1 className="text-3xl font-bold text-white mb-2">Execute Agentic Pipeline</h1>
         <p className="text-slate-300 max-w-lg mx-auto leading-relaxed">
-          Start the backend ingestion process. The system will retrieve new feedback directly from your <b>Google Sheet</b>, pass it through the <b>n8n AI Agents</b>, and securely store the clustered requirements in the PostgreSQL database.
+          Select a feedback source to kick off the end-to-end AI workflow. Output will be generated by <b>Gemini 3</b> agents and tracked below in real time.
         </p>
 
-        <div className="pt-8">
-          {runFinished ? (
+        {!isRunning && !runFinished && (
+          <div className="flex justify-center gap-4 py-4">
+            <label className="flex items-center gap-2 text-white bg-slate-800/50 px-4 py-2 rounded-lg cursor-pointer hover:bg-slate-700/50 transition">
+              <input type="radio" value="csv" checked={source === "csv"} onChange={() => setSource("csv")} className="accent-blue-500" />
+              Demo Data (CSV)
+            </label>
+            <label className="flex items-center gap-2 text-white bg-slate-800/50 px-4 py-2 rounded-lg cursor-pointer hover:bg-slate-700/50 transition">
+              <input type="radio" value="reddit" checked={source === "reddit"} onChange={() => setSource("reddit")} className="accent-blue-500" />
+              Reddit
+            </label>
+            <label className="flex items-center gap-2 text-white bg-slate-800/50 px-4 py-2 rounded-lg cursor-pointer hover:bg-slate-700/50 transition">
+              <input type="radio" value="app_store" checked={source === "app_store"} onChange={() => setSource("app_store")} className="accent-blue-500" />
+              App Store
+            </label>
+          </div>
+        )}
+
+        <div className="pt-4">
+          {runFinished && !isRunning ? (
             <div className="space-y-6 animate-scale-in">
               <div className="inline-flex flex-col sm:flex-row items-center gap-3 text-emerald-400 bg-emerald-400/10 px-6 py-4 rounded-xl border border-emerald-400/20 shadow-lg shadow-emerald-500/10">
                 <CheckCircle2 className="w-6 h-6 flex-shrink-0" />
-                <span className="font-medium text-left">Pipeline Triggered Successfully!<br/><span className="text-sm text-emerald-400/80">n8n is actively processing your data in the background.</span></span>
+                <span className="font-medium text-left">Pipeline Execution Complete!<br/><span className="text-sm text-emerald-400/80">All AI agents have finished their tasks.</span></span>
               </div>
-              <div>
-                <Link href="/brds" className="btn-primary inline-flex items-center gap-2 px-8 py-3 text-sm transition-transform hover:scale-105 shadow-xl shadow-blue-500/20">
+              <div className="flex justify-center gap-4">
+                <Link href="/brds" className="btn-primary inline-flex items-center gap-2 px-6 py-3 text-sm transition-transform hover:scale-105 shadow-xl shadow-blue-500/20">
                   <FileText className="w-4 h-4" />
-                  Go to BRD Review Queue to see results
+                  Review BRDs
                 </Link>
+                <button 
+                  onClick={() => { setRunFinished(false); setCurrentStageIndex(-1); setLogs([]); setSummary(null); }}
+                  className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm transition-transform hover:scale-105"
+                >
+                  Run Again
+                </button>
               </div>
             </div>
           ) : (
             <button 
               onClick={startPipeline}
               disabled={isRunning}
-              className={`btn-primary text-base font-semibold px-8 py-4 transition-all hover:scale-105 shadow-xl shadow-blue-500/20 ${isRunning ? 'opacity-70 cursor-wait' : ''}`}
+              className={`btn-primary text-base font-semibold px-8 py-4 transition-all shadow-xl shadow-blue-500/20 ${isRunning ? 'opacity-70 cursor-not-allowed scale-95' : 'hover:scale-105'}`}
             >
               {isRunning ? (
                 <span className="flex items-center gap-2">
                   <CircleDashed className="w-5 h-5 animate-spin" />
-                  Firing n8n Webhook...
+                  Agents Running in n8n...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
                   <Play className="w-5 h-5 fill-white" />
-                  Execute End-to-End Pipeline
+                  Execute Pipeline
                 </span>
               )}
             </button>
           )}
         </div>
       </div>
+
+      {(isRunning || runFinished) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          {/* Progress Stepper Tracking */}
+          <div className="glass-card-static bg-slate-900 border border-slate-700 rounded-xl p-8 shadow-sm">
+            <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+              <Network className="w-5 h-5 text-blue-400" />
+              Live Execution Status
+            </h3>
+            <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-700 before:to-transparent">
+              {STAGES.map((stage, idx) => {
+                const isCompleted = idx < currentStageIndex;
+                const isCurrent = idx === currentStageIndex;
+                const isPending = idx > currentStageIndex;
+
+                let iconColor = "text-slate-500";
+                let borderColor = "border-slate-700 bg-slate-800";
+                
+                if (isCompleted) {
+                  iconColor = "text-emerald-400";
+                  borderColor = "border-emerald-500/30 bg-emerald-500/10";
+                } else if (isCurrent) {
+                  iconColor = "text-blue-400";
+                  borderColor = "border-blue-500 bg-blue-500/10 shadow-[0_0_15px_rgba(59,130,246,0.5)]";
+                }
+
+                return (
+                  <div key={stage} className={`relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active`}>
+                    <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${borderColor} shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 transition-colors duration-500`}>
+                      {isCompleted ? <CheckCircle2 className={`w-5 h-5 ${iconColor}`} /> : isCurrent ? <CircleDashed className={`w-5 h-5 ${iconColor} animate-spin`} /> : <div className="w-3 h-3 rounded-full bg-slate-600" />}
+                    </div>
+                    
+                    <div className={`w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border ${isCurrent ? 'border-blue-500/30 bg-slate-800/80' : 'border-slate-700/50 bg-slate-800/30'} transition-all duration-300`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <time className={`text-xs font-semibold uppercase tracking-wider ${isCurrent ? 'text-blue-400' : isCompleted ? 'text-emerald-400' : 'text-slate-500'}`}>
+                          {isCurrent ? "Running..." : isCompleted ? "Completed" : "Pending"}
+                        </time>
+                      </div>
+                      <div className={`text-sm font-bold ${isPending ? 'text-slate-500' : 'text-white'}`}>{stage}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Execution Log & Summary */}
+          <div className="space-y-6">
+            
+            {/* Summary Counters */}
+            <div className="glass-card-static bg-slate-900 border border-slate-700 rounded-xl p-6 shadow-sm">
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <Database className="w-5 h-5 text-purple-400" />
+                Execution Summary
+              </h3>
+              
+              {summary ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
+                    <p className="text-2xl font-bold text-white">{summary.rawFeedback || 0}</p>
+                    <p className="text-xs text-slate-400 uppercase tracking-wider mt-1">Feedback Items</p>
+                  </div>
+                  <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
+                    <p className="text-2xl font-bold text-indigo-400">{summary.clusters || 0}</p>
+                    <p className="text-xs text-slate-400 uppercase tracking-wider mt-1">Clusters Formed</p>
+                  </div>
+                  <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
+                    <p className="text-2xl font-bold text-emerald-400">{summary.brdsGenerated || 0}</p>
+                    <p className="text-xs text-slate-400 uppercase tracking-wider mt-1">BRDs Gen.</p>
+                  </div>
+                  <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
+                    <p className="text-2xl font-bold text-blue-400">{summary.userStories || 0}</p>
+                    <p className="text-xs text-slate-400 uppercase tracking-wider mt-1">User Stories</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-32 flex items-center justify-center text-slate-500 italic text-sm">
+                  Waiting for data...
+                </div>
+              )}
+            </div>
+
+            {/* Timeline Logs */}
+            <div className="glass-card-static bg-slate-900 border border-slate-700 rounded-xl p-6 shadow-sm flex flex-col h-[400px]">
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <ListChecks className="w-5 h-5 text-emerald-400" />
+                Agent Execution Log
+              </h3>
+              <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                {logs.length === 0 ? (
+                  <p className="text-slate-500 italic text-sm text-center mt-10">Starting pipeline...</p>
+                ) : (
+                  logs.map((log: any, i: number) => (
+                    <div key={i} className="bg-slate-800/40 border border-slate-700/50 p-3 rounded-lg text-sm flex gap-3 animate-fade-in">
+                      <div className="mt-0.5">
+                        {log.status === 'completed' ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        ) : log.status === 'failed' ? (
+                          <div className="w-4 h-4 rounded-full bg-red-500/20 border border-red-500 flex items-center justify-center">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+                          </div>
+                        ) : (
+                          <CircleDashed className="w-4 h-4 text-blue-400 animate-spin" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-slate-200">{log.stage}</p>
+                        <p className="text-xs text-slate-500 mt-1">{new Date(log.updated_at).toLocaleTimeString()}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

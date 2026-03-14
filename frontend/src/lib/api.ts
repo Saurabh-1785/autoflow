@@ -65,8 +65,11 @@ export const api = {
   // Pipeline Status
   getPipelineStatus: () => 
     fetchApi<any>('/pipeline/status'),
-  triggerPipeline: () => 
+  getPipelineSummary: () =>
+    fetchApi<any>('/pipeline/summary'),
+  triggerPipeline: (source?: string) => 
     fetchApi<any>('/pipeline/trigger', {
       method: 'POST',
+      body: JSON.stringify(source ? { source } : {}),
     }),
 };

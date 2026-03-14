@@ -13,11 +13,33 @@
       }
     },
     {
+      "id": "5",
+      "name": "Split BRD IDs",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [200, 0],
+      "parameters": {
+        "batchSize": 1,
+        "itemMapping": "brdIds"
+      }
+    },
+    {
+      "id": "6",
+      "name": "Get BRD Details",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [400, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM brds WHERE id = '{{$json}}'"
+      }
+    },
+    {
       "id": "2",
       "name": "Gemini Epics",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [250, 0],
+      "position": [600, 0],
       "parameters": {
         "method": "POST",
         "url": "={{$env.BACKEND_BASE_URL || 'http://localhost:3001'}}/api/agents/story-writer",
@@ -27,40 +49,119 @@
           "parameters": [
             {
               "name": "brd",
-              "value": "={{$json}}"
+              "value": "={{$node[\"Get BRD Details\"].json}}"
             }
           ]
         }
       }
     },
     {
-      "id": "4",
-      "name": "Format Output",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [400, 0],
+      "id": "7",
+      "name": "Split Epics",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [800, 0],
       "parameters": {
-        "jsCode": "return $input.first().json.data.userStories.map(s => ({ json: s }));"
+        "batchSize": 1,
+        "options": {
+          "reset": true
+        },
+        "itemMapping": "data.epics"
       }
     },
     {
       "id": "3",
-      "name": "Save Epics",
+      "name": "Save Epic",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.2,
-      "position": [500, 0],
+      "position": [1000, 0],
       "parameters": {
         "operation": "insert",
-        "table": "epics"
+        "table": "epics",
+        "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+                "brd_id": "={{$node[\"Get BRD Details\"].json.id}}",
+                "title": "={{$node[\"Split Epics\"].json.title}}",
+                "description": "={{$node[\"Split Epics\"].json.description}}",
+                "status": "active"
+            }
+        },
+        "options": {
+            "returning": "id"
+        }
       }
+    },
+    {
+      "id": "8",
+      "name": "Format Stories",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 0],
+      "parameters": {
+        "jsCode": "const epicTitle = $node[\"Split Epics\"].json.title;\nconst allStories = $node[\"Gemini Epics\"].json.data.userStories;\nreturn allStories\n  .filter(s => s.epicTitle === epicTitle)\n  .map(s => ({ json: s }));"
+      }
+    },
+    {
+      "id": "9",
+      "name": "Save User Stories",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [1400, 0],
+      "parameters": {
+        "operation": "insert",
+        "table": "user_stories",
+        "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+                "epic_id": "={{$node[\"Save Epic\"].json.id}}",
+                "title": "={{$json.title}}",
+                "story_text": "={{$json.description}}",
+                "story_points": "={{$json.storyPoints}}",
+                "acceptance_criteria": "={{$json.acceptanceCriteria}}",
+                "status": "ready"
+            }
+        }
+      }
+    },
+    {
+      "id": "10",
+      "name": "Next Epic",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1600, 0]
     }
   ],
   "connections": {
     "Webhook Trigger": {
+      "main": [[{ "node": "Split BRD IDs", "type": "main", "index": 0 }]]
+    },
+    "Split BRD IDs": {
+      "main": [[{ "node": "Get BRD Details", "type": "main", "index": 0 }]]
+    },
+    "Get BRD Details": {
       "main": [[{ "node": "Gemini Epics", "type": "main", "index": 0 }]]
     },
     "Gemini Epics": {
-      "main": [[{ "node": "Save Epics", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Split Epics", "type": "main", "index": 0 }]]
+    },
+    "Split Epics": {
+      "main": [
+        [{ "node": "Save Epic", "type": "main", "index": 0 }],
+        [{ "node": "Split BRD IDs", "type": "main", "index": 0 }]
+      ]
+    },
+    "Save Epic": {
+      "main": [[{ "node": "Format Stories", "type": "main", "index": 0 }]]
+    },
+    "Format Stories": {
+      "main": [[{ "node": "Save User Stories", "type": "main", "index": 0 }]]
+    },
+    "Save User Stories": {
+      "main": [[{ "node": "Split Epics", "type": "main", "index": 0 }]]
+    },
+    "Update BRD Status": {
+        "main": []
     }
   },
   "active": true,

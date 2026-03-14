@@ -54,8 +54,7 @@
       "parameters": {
         "jsCode": "return { json: { success: true, message: 'Data ingestion completed' } };"
       }
-    }
-  ],
+    },
     {
       "id": "6",
       "name": "Get New Feedback",
