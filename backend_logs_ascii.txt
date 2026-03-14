@@ -1,0 +1,10 @@
+backend-1  | 
+backend-1  | > autoflow-backend@1.0.0 start
+backend-1  | > node dist/server.js
+backend-1  | 
+backend-1  | ???? AutoFlow Backend running on port 3001
+backend-1  | n8n Webhook Error: Request failed with status code 500
+backend-1  | [Error Handler] Error: Failed to trigger n8n pipeline
+backend-1  |     at triggerN8nWebhook (/app/dist/services/pipeline.service.js:31:15)
+backend-1  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+backend-1  |     at async /app/dist/routes/pipeline.routes.js:40:13

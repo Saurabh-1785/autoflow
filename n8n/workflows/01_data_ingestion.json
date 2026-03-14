@@ -56,6 +56,97 @@
       }
     }
   ],
+    {
+      "id": "6",
+      "name": "Get New Feedback",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [1200, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, text FROM raw_feedback WHERE cluster_id IS NULL"
+      }
+    },
+    {
+      "id": "7",
+      "name": "Gemini Cluster Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1400, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BACKEND_BASE_URL || 'http://localhost:3001'}}/api/agents/cluster",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "items",
+              "value": "={{$node[\"Get New Feedback\"].json}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "8",
+      "name": "Split Clusters",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [1600, 0],
+      "parameters": {
+        "batchSize": 1,
+        "options": {
+          "reset": true
+        },
+        "itemMapping": "data.clusters"
+      }
+    },
+    {
+      "id": "9",
+      "name": "Save Cluster",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [1800, 0],
+      "parameters": {
+        "operation": "insert",
+        "table": "feedback_clusters",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "topic_label": "={{$node[\"Split Clusters\"].json.topicLabel}}",
+            "keywords": "={{$node[\"Split Clusters\"].json.keywords}}",
+            "mention_count": "={{$node[\"Split Clusters\"].json.rawFeedbackIds.length}}"
+          }
+        },
+        "options": {
+            "returning": "id"
+        }
+      }
+    },
+    {
+      "id": "10",
+      "name": "Update Raw Feedback",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [2000, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE raw_feedback SET cluster_id = '{{$json.id}}' WHERE id IN ({{$node[\"Split Clusters\"].json.rawFeedbackIds.map(id => \"'\" + id + \"'\").join(',')}})"
+      }
+    },
+    {
+      "id": "11",
+      "name": "Trigger BRD Gen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2200, 150],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.N8N_BASE_URL || 'http://localhost:5678'}}/webhook/generate-brds"
+      }
+    }
+  ],
   "connections": {
     "Webhook Trigger": {
       "main": [[{ "node": "Rows From Webhook", "type": "main", "index": 0 }]]
@@ -68,6 +159,27 @@
     },
     "PostgreSQL Insert": {
       "main": [[{ "node": "Mark Ingestion Complete", "type": "main", "index": 0 }]]
+    },
+    "Mark Ingestion Complete": {
+      "main": [[{ "node": "Get New Feedback", "type": "main", "index": 0 }]]
+    },
+    "Get New Feedback": {
+      "main": [[{ "node": "Gemini Cluster Agent", "type": "main", "index": 0 }]]
+    },
+    "Gemini Cluster Agent": {
+      "main": [[{ "node": "Split Clusters", "type": "main", "index": 0 }]]
+    },
+    "Split Clusters": {
+      "main": [
+        [{ "node": "Save Cluster", "type": "main", "index": 0 }],
+        [{ "node": "Trigger BRD Gen", "type": "main", "index": 0 }]
+      ]
+    },
+    "Save Cluster": {
+      "main": [[{ "node": "Update Raw Feedback", "type": "main", "index": 0 }]]
+    },
+    "Update Raw Feedback": {
+      "main": [[{ "node": "Split Clusters", "type": "main", "index": 0 }]]
     }
   },
   "active": true,

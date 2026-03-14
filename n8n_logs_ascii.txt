@@ -1,0 +1,23 @@
+n8n-1  | Last session crashed
+n8n-1  | Initializing n8n process
+n8n-1  | n8n ready on ::, port 5678
+n8n-1  | n8n Task Broker ready on 127.0.0.1, port 5679
+n8n-1  | Failed to start Python task runner in internal mode. because Python 3 is missing from this system. Launching a Python runner in internal mode is intended only for debugging and is not recommended for production. Users are encouraged to deploy in external mode. See: https://docs.n8n.io/hosting/configuration/task-runners/#setting-up-external-mode
+n8n-1  | [license SDK] Skipping renewal on init: license cert is not initialized
+n8n-1  | Registered runner "JS Task Runner" (tx-HI-25NKiZsaKknxVun) 
+n8n-1  | Version: 2.11.4
+n8n-1  | Building workflow dependency index...
+n8n-1  | Start Active Workflows:
+n8n-1  | (node:7) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+n8n-1  | (Use `node --trace-deprecation ...` to show where the warning was created)
+n8n-1  | Finished building workflow dependency index. Processed 6 draft workflows, 0 published workflows.
+n8n-1  | Activated workflow "AutoFlow - 03 Epic Generation" (ID: mJl9ati0OGTAFtET)
+n8n-1  | Activated workflow "AutoFlow - 06 Health Monitor" (ID: cSn1Tv36pZEYCo5B)
+n8n-1  | Activated workflow "AutoFlow - 04 Human Approval Handler" (ID: PhHsSEwkgTGvbwi5)
+n8n-1  | Activated workflow "AutoFlow - 05 Prioritization" (ID: D3wIAQYThHCvtzE1)
+n8n-1  | Activated workflow "AutoFlow - 02 BRD Generation" (ID: f3KvUbcXHkglC4HE)
+n8n-1  | Activated workflow "AutoFlow - 01 Data Ingestion" (ID: zwuvpRVltc9CE4OW)
+n8n-1  | 
+n8n-1  | Editor is now accessible via:
+n8n-1  | http://localhost:5678
+n8n-1  | (node:7) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
