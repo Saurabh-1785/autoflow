@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoFlow Intelligence — PM Workspace</title>
+<meta name="description" content="Product Manager Workspace for feature prioritization and roadmap planning.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-left"><a href="index.html" style="color:#fff;text-decoration:none;display:flex;align-items:center;gap:10px"><i data-lucide="workflow"></i> AutoFlow Intelligence</a></div>
+  <div class="header-center">Projects / AutoFlow Intelligence / <span>PM Workspace</span></div>
+  <div class="header-right">
+    <div class="bell"><i data-lucide="bell" style="width:18px;height:18px"></i><div class="badge">3</div></div>
+    <div class="avatar">PM</div>
+    <span>PM Console</span>
+  </div>
+</header>
+
+<div class="app-layout">
+<nav class="sidebar">
+  <ul class="nav-items">
+    <li class="nav-item" onclick="location.href='index.html'"><i data-lucide="home" style="width:16px;height:16px"></i> Home</li>
+    <li class="nav-item"><i data-lucide="bar-chart-3" style="width:16px;height:16px"></i> Dashboard</li>
+    <li class="nav-item" onclick="location.href='workspace.html'"><i data-lucide="search" style="width:16px;height:16px"></i> BA Workspace</li>
+    <li class="nav-item active"><i data-lucide="target" style="width:16px;height:16px"></i> PM Workspace</li>
+    <li class="nav-item" onclick="location.href='po-workspace.html'"><i data-lucide="list-checks" style="width:16px;height:16px"></i> PO Workspace</li>
+    <li class="nav-item"><i data-lucide="file-text" style="width:16px;height:16px"></i> BRD History <span class="nav-badge">12</span></li>
+    <li class="nav-item"><i data-lucide="scroll-text" style="width:16px;height:16px"></i> Audit Log</li>
+    <li class="nav-item"><i data-lucide="settings" style="width:16px;height:16px"></i> Settings</li>
+  </ul>
+</nav>
+
+<main class="main-content" style="margin-right:0;">
+  <div class="page-title-row">
+    <div><h1 class="page-title">Product Manager Workspace</h1><p class="page-subtitle">Feature prioritization, WSJF scoring, and roadmap planning</p></div>
+  </div>
+
+  <div class="coming-soon-card">
+    <div class="cs-icon"><i data-lucide="target" style="width:48px;height:48px;color:var(--color-accent)"></i></div>
+    <div class="cs-title">PM Workspace &mdash; Coming Soon</div>
+    <div class="cs-desc">The Product Manager Workspace will receive forwarded BRDs from the BA pipeline and enable:</div>
+    <div class="cs-features">
+      <div class="cs-feature">
+        <div class="cs-feature-num">1</div>
+        <div>
+          <div class="cs-feature-title">WSJF Scoring</div>
+          <div class="cs-feature-desc">Auto-calculate Weighted Shortest Job First scores for each feature based on business value, time criticality, risk reduction, and job size.</div>
+        </div>
+      </div>
+      <div class="cs-feature">
+        <div class="cs-feature-num">2</div>
+        <div>
+          <div class="cs-feature-title">Feature Prioritization</div>
+          <div class="cs-feature-desc">Drag-and-drop prioritization board with MoSCoW categorization and stakeholder voting integration.</div>
+        </div>
+      </div>
+      <div class="cs-feature">
+        <div class="cs-feature-num">3</div>
+        <div>
+          <div class="cs-feature-title">Roadmap Generation</div>
+          <div class="cs-feature-desc">Auto-generate quarterly roadmaps aligned with OKRs, with Gantt chart export and Jira sync.</div>
+        </div>
+      </div>
+      <div class="cs-feature">
+        <div class="cs-feature-num">4</div>
+        <div>
+          <div class="cs-feature-title">Stakeholder Reports</div>
+          <div class="cs-feature-desc">One-click executive summaries with confidence metrics, impact forecasts, and resource allocation estimates.</div>
+        </div>
+      </div>
+    </div>
+    <div class="cs-integration">
+      <div class="cs-int-label">n8n Integration Point</div>
+      <div class="cs-int-code">POST /webhook/pm-agent-trigger &mdash; Sub-Workflow 5 (Feature Prioritization)</div>
+    </div>
+    <a href="workspace.html" class="btn-primary" style="margin-top:24px;"><i data-lucide="arrow-left" style="width:14px;height:14px"></i> Back to BA Workspace</a>
+  </div>
+</main>
+</div>
+
+<script>document.addEventListener('DOMContentLoaded', () => { if (window.lucide) lucide.createIcons(); });</script>
+</body>
+</html>

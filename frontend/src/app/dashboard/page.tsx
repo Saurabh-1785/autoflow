@@ -1,656 +1,1216 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
+import { useMemo, useState } from "react";
 import {
-  MessageSquareText,
-  Sparkles,
-  Filter,
-  Brain,
-  FileText,
-  ShieldCheck,
-  UserCheck,
-  ArrowUpDown,
-  Blocks,
-  Shield,
+  AlertTriangle,
   CheckCircle2,
-  XCircle,
-  Edit3,
-  Zap,
-  ArrowRight,
-  Hash,
-  ExternalLink,
+  CircleDashed,
+  Play,
   RotateCcw,
+  Settings,
+  Terminal,
 } from "lucide-react";
 
-/* -------------------------------------------------------
-   Step definitions
-   ------------------------------------------------------- */
-const STEPS = [
-  { id: 1, title: "Collecting Customer Feedback", icon: MessageSquareText, color: "#3b82f6", duration: 4000 },
-  { id: 2, title: "Cleaning and Normalizing Data", icon: Filter, color: "#06b6d4", duration: 3500 },
-  { id: 3, title: "Detecting Product Issues", icon: Brain, color: "#8b5cf6", duration: 4000 },
-  { id: 4, title: "Generating Business Requirements", icon: FileText, color: "#f59e0b", duration: 4500 },
-  { id: 5, title: "Validating Requirements", icon: ShieldCheck, color: "#10b981", duration: 3500 },
-  { id: 6, title: "Human Review Required", icon: UserCheck, color: "#ec4899", duration: 0 }, // manual
-  { id: 7, title: "Calculating Feature Priority", icon: ArrowUpDown, color: "#f97316", duration: 4000 },
-  { id: 8, title: "Creating Epics and User Stories", icon: Blocks, color: "#a855f7", duration: 4000 },
-  { id: 9, title: "Recording Immutable Audit Trail", icon: Shield, color: "#14b8a6", duration: 4000 },
-  { id: 10, title: "AutoFlow Analysis Complete", icon: Zap, color: "#3b82f6", duration: 0 },
-];
+type AgentKey = "scraper" | "cleaner" | "analyst" | "critic" | "prioritizer";
+type StageKey = "config" | AgentKey;
+type StageState = "idle" | "running" | "done";
+type FlagState = "open" | "resolved" | "overridden";
 
-const DESCRIPTIONS: Record<number, string> = {
-  1: "Aggregating signals from Reddit, app store reviews, and support tickets.",
-  2: "Removing duplicates, filtering noise, detecting language, and preparing structured feedback.",
-  3: "Grouping similar feedback into themes using AI clustering.",
-  4: "Analyst Agent synthesizing clustered feedback into structured BRDs.",
-  5: "Critic Agent reviewing generated BRDs for ambiguity, completeness, and acceptance criteria.",
-  6: "Review the AI-generated BRD before it proceeds to prioritization.",
-  7: "Applying WSJF scoring based on business value, urgency, and risk reduction.",
-  8: "Story Writer Agent converting BRDs into developer-ready epics.",
-  9: "Storing requirement hashes and decision history on blockchain.",
-  10: "Pipeline execution finished. All requirements processed successfully.",
+type HitlFlag = {
+  id: string;
+  feature: string;
+  story: string;
+  type: string;
+  issue: string;
+  current: string;
+  suggested: string;
+  state: FlagState;
 };
 
-/* =======================================================
-   DASHBOARD PAGE
-   ======================================================= */
+type RankedFeature = {
+  id: string;
+  requirementId: string;
+  name: string;
+  bv: number;
+  tc: number;
+  rr: number;
+  effort: number;
+  wsjf: number;
+  alignment: number;
+  priority: "Critical" | "High" | "Medium" | "Low";
+  originalRank: number;
+};
+
+type Requirement = {
+  id: string;
+  title: string;
+  description: string;
+  priority: "Critical" | "High" | "Medium" | "Low";
+  wsjf: { bv: number; tc: number; rr: number; effort: number; score: number };
+  userStories: {
+    id: string;
+    story: string;
+    criteria: string[];
+  }[];
+};
+
+const SOURCE_OPTIONS = [
+  { id: "reddit", name: "Reddit", desc: "Community discussions" },
+  { id: "twitter", name: "Twitter / X", desc: "Real-time mentions" },
+  { id: "appstore", name: "App Store", desc: "iOS reviews" },
+  { id: "googleplay", name: "Google Play", desc: "Android reviews" },
+  { id: "g2", name: "G2 Reviews", desc: "Enterprise reviews" },
+  { id: "trustpilot", name: "Trustpilot", desc: "Consumer reviews" },
+  { id: "zendesk", name: "Zendesk", desc: "Support tickets" },
+];
+
+const SOURCE_BREAKDOWN = [
+  { source: "Reddit", collected: 342, clean: 201, pct: "16.7%" },
+  { source: "Twitter / X", collected: 891, clean: 389, pct: "32.3%" },
+  { source: "App Store (iOS)", collected: 156, clean: 121, pct: "10.1%" },
+  { source: "Google Play", collected: 203, clean: 158, pct: "13.1%" },
+  { source: "G2 Reviews", collected: 88, clean: 82, pct: "6.8%" },
+  { source: "Trustpilot", collected: 114, clean: 97, pct: "8.1%" },
+  { source: "Support Tickets", collected: 1053, clean: 155, pct: "12.9%" },
+];
+
+const THEME_CLUSTERS = [
+  { id: "TC-001", name: "Performance & Speed Issues", volume: 312, sentiment: -0.72, rage: true, elevated: true },
+  { id: "TC-002", name: "Onboarding & Setup Friction", volume: 198, sentiment: -0.61, rage: false, elevated: false },
+  { id: "TC-003", name: "Mobile App Instability", volume: 167, sentiment: -0.68, rage: true, elevated: true },
+  { id: "TC-004", name: "Billing & Pricing Concerns", volume: 134, sentiment: -0.54, rage: false, elevated: false },
+  { id: "TC-005", name: "Third-Party Integrations", volume: 121, sentiment: -0.43, rage: false, elevated: false },
+  { id: "TC-006", name: "Reporting & Dashboard UX", volume: 109, sentiment: -0.38, rage: false, elevated: false },
+];
+
+const REQUIREMENTS: Requirement[] = [
+  {
+    id: "REQ-001",
+    title: "Dashboard Response Time SLA Enforcement",
+    description:
+      "Reduce analytics dashboard response time from 4.2s average to under 2.0s (P95), with progressive rendering for first meaningful paint under 800ms.",
+    priority: "Critical",
+    wsjf: { bv: 13, tc: 8, rr: 8, effort: 5, score: 5.8 },
+    userStories: [
+      {
+        id: "US-001",
+        story:
+          "As an authenticated user, I want the analytics dashboard to fully render within 2 seconds so that my workflow is not blocked.",
+        criteria: [
+          "Given user opens dashboard, when page loads, then P95 render time is under 2000ms.",
+          "Given normal traffic load, when user opens dashboard, then no timeout error appears.",
+        ],
+      },
+      {
+        id: "US-002",
+        story:
+          "As a power user, I want above-the-fold content rendered within 800ms so that I can start reading before all widgets finish.",
+        criteria: [
+          "Given dashboard request starts, when first paint occurs, then KPI cards appear within 800ms.",
+          "Given lower widgets are still loading, when user scrolls, then UI remains responsive.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "REQ-002",
+    title: "Onboarding Wizard Streamlining",
+    description:
+      "Reduce onboarding flow from 12 to max 5 required steps, with optional integration setup deferred and measurable completion target under 8 minutes.",
+    priority: "High",
+    wsjf: { bv: 8, tc: 8, rr: 5, effort: 3, score: 7.0 },
+    userStories: [
+      {
+        id: "US-004",
+        story:
+          "As a newly registered user, I want to finish required onboarding in under 8 minutes so that I can activate core value quickly.",
+        criteria: [
+          "Given new user starts onboarding, when completion happens, then no more than 5 required steps were shown.",
+          "Given onboarding completed, when user reaches dashboard, then core features are available without support help.",
+        ],
+      },
+      {
+        id: "US-005",
+        story:
+          "As a user, I want optional integrations separated from required setup so I can skip and continue faster.",
+        criteria: [
+          "Given optional integration step, when user clicks skip, then onboarding continues without blocking.",
+          "Given user skipped integration, when returning later, then setup wizard remains accessible from settings.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "REQ-003",
+    title: "Mobile Stability & Crash Prevention",
+    description:
+      "Reduce mobile crash rate by introducing guardrails around report generation, memory handling, and network retry behavior.",
+    priority: "High",
+    wsjf: { bv: 8, tc: 7, rr: 7, effort: 7, score: 3.1 },
+    userStories: [
+      {
+        id: "US-007",
+        story:
+          "As a mobile user, I want report generation to avoid app crashes so I can complete actions reliably on iOS and Android.",
+        criteria: [
+          "Given report generation on mobile, when request starts, then app does not crash during render.",
+          "Given network interruption, when retry policy executes, then user sees graceful recovery state.",
+        ],
+      },
+    ],
+  },
+];
+
+const SCRAPER_LOGS = [
+  "[10:42:01] Initializing Scraper Agent v2.1...",
+  "[10:42:03] Reddit + Twitter/X collection started...",
+  "[10:42:06] App Store + Google Play reviews fetched",
+  "[10:42:11] G2 + Trustpilot + Zendesk ingestion complete",
+  "[10:42:18] Merged 2,847 raw records into staging",
+  "[10:42:23] ✓ Scraper Agent complete",
+];
+
+const CLEANER_LOGS = [
+  "[10:42:31] Cleaner Agent initialized (2,847 input)",
+  "[10:42:35] Deduplication pass: 891 duplicates removed",
+  "[10:42:38] Language normalization + translation complete",
+  "[10:42:41] Noise filter removed low-quality records",
+  "[10:42:44] PII scrubbed + normalized dataset written",
+  "[10:42:46] ✓ Cleaner Agent complete (1,203 clean records)",
+];
+
+const ANALYST_LOGS = [
+  "[10:43:01] Analyst Agent started with BERTopic clustering",
+  "[10:43:05] 8 themes identified from 1,203 clean records",
+  "[10:43:09] Top themes: Performance, Onboarding, Mobile",
+  "[10:43:12] Generating BRD using claude-opus-4 template",
+  "[10:43:16] INVEST schema check pass (18/18 stories)",
+  "[10:43:19] ✓ Analyst Agent complete (confidence 0.89)",
+];
+
+const CRITIC_LOGS = [
+  "[10:44:01] Critic Agent initialized for BRD QA",
+  "[10:44:07] INVEST check: 17/18 pass, 1 flagged",
+  "[10:44:12] Contradiction scan: no conflicts",
+  "[10:44:20] Ambiguity scan: 2 flags raised",
+  "[10:44:27] Completeness score: 0.97",
+  "[10:44:30] ✓ Critic complete (overall QA 0.91)",
+];
+
+const PRIORITIZER_LOGS = [
+  "[10:45:01] PM Prioritizer Agent initialized",
+  "[10:45:05] WSJF scoring model loaded (with source weighting)",
+  "[10:45:09] Strategic alignment scores merged",
+  "[10:45:14] Ranking complete — override window opened",
+  "[10:45:17] ✓ Prioritizer complete, awaiting human finalize",
+];
+
+const INITIAL_FEATURES: RankedFeature[] = [
+  {
+    id: "f1",
+    requirementId: "REQ-001",
+    name: "System Performance Optimization",
+    bv: 9,
+    tc: 8,
+    rr: 7,
+    effort: 5,
+    wsjf: 8.4,
+    alignment: 0.91,
+    priority: "Critical",
+    originalRank: 1,
+  },
+  {
+    id: "f2",
+    requirementId: "REQ-002",
+    name: "Onboarding Flow Redesign",
+    bv: 8,
+    tc: 7,
+    rr: 6,
+    effort: 6,
+    wsjf: 7.2,
+    alignment: 0.87,
+    priority: "High",
+    originalRank: 2,
+  },
+  {
+    id: "f3",
+    requirementId: "REQ-003",
+    name: "Mobile App Stability",
+    bv: 8,
+    tc: 7,
+    rr: 7,
+    effort: 7,
+    wsjf: 6.8,
+    alignment: 0.84,
+    priority: "High",
+    originalRank: 3,
+  },
+  {
+    id: "f4",
+    requirementId: "REQ-004",
+    name: "Billing Transparency Dashboard",
+    bv: 7,
+    tc: 6,
+    rr: 6,
+    effort: 6,
+    wsjf: 5.9,
+    alignment: 0.79,
+    priority: "Medium",
+    originalRank: 4,
+  },
+  {
+    id: "f5",
+    requirementId: "REQ-005",
+    name: "Integration Expansion",
+    bv: 6,
+    tc: 5,
+    rr: 5,
+    effort: 6,
+    wsjf: 5.1,
+    alignment: 0.72,
+    priority: "Medium",
+    originalRank: 5,
+  },
+  {
+    id: "f6",
+    requirementId: "REQ-006",
+    name: "Enhanced Data Export",
+    bv: 5,
+    tc: 4,
+    rr: 4,
+    effort: 6,
+    wsjf: 4.3,
+    alignment: 0.68,
+    priority: "Low",
+    originalRank: 6,
+  },
+];
+
+const INITIAL_FLAGS: HitlFlag[] = [
+  {
+    id: "flag-1",
+    feature: "F-002",
+    story: "US-005",
+    type: "INVEST",
+    issue: "Story not independently deployable",
+    current: "As a new user, I want the onboarding steps to guide me intuitively...",
+    suggested: "Split into two atomic stories (setup config + guidance overlay)",
+    state: "open",
+  },
+  {
+    id: "flag-2",
+    feature: "F-002",
+    story: "US-005",
+    type: "Ambiguity",
+    issue: "Term: intuitive onboarding",
+    current: "Contains non-measurable term 'intuitive'",
+    suggested: "Replace with: completable within 8 minutes without support",
+    state: "open",
+  },
+  {
+    id: "flag-3",
+    feature: "F-005",
+    story: "US-013",
+    type: "Ambiguity",
+    issue: "Term: seamless integration",
+    current: "Contains non-measurable term 'seamless'",
+    suggested: "Replace with: API response <300ms and 99.9% uptime",
+    state: "open",
+  },
+];
+
+const STAGE_TITLES: Record<StageKey, string> = {
+  config: "Config",
+  scraper: "Scraper",
+  cleaner: "Cleaner",
+  analyst: "Analyst",
+  critic: "Critic",
+  prioritizer: "Prioritizer",
+};
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export default function DashboardPage() {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [transitioning, setTransitioning] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [isStarted, setIsStarted] = useState(false);
+  const [sources, setSources] = useState<string[]>(SOURCE_OPTIONS.map((s) => s.id));
+  const [dateWindow, setDateWindow] = useState("30d");
+  const [confidenceThreshold, setConfidenceThreshold] = useState(0.75);
 
-  const goToStep = useCallback((next: number) => {
-    setTransitioning(true);
-    setTimeout(() => {
-      setCurrentStep(next);
-      setProgress(0);
-      setTransitioning(false);
-    }, 400);
-  }, []);
+  const [runStarted, setRunStarted] = useState(false);
+  const [runFinished, setRunFinished] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [activeStage, setActiveStage] = useState<StageKey>("config");
 
-  /* Auto-advance for non-manual steps */
-  useEffect(() => {
-    if (!isStarted) return;
+  const [stageStatus, setStageStatus] = useState<Record<StageKey, StageState>>({
+    config: "idle",
+    scraper: "idle",
+    cleaner: "idle",
+    analyst: "idle",
+    critic: "idle",
+    prioritizer: "idle",
+  });
 
-    const step = STEPS[currentStep - 1];
-    if (!step || step.duration === 0) return;
+  const [logs, setLogs] = useState<Record<AgentKey, string[]>>({
+    scraper: [],
+    cleaner: [],
+    analyst: [],
+    critic: [],
+    prioritizer: [],
+  });
 
-    const interval = 50;
-    let elapsed = 0;
-    const timer = setInterval(() => {
-      elapsed += interval;
-      setProgress(Math.min((elapsed / step.duration) * 100, 100));
-      if (elapsed >= step.duration) {
-        clearInterval(timer);
-        if (currentStep < STEPS.length) {
-          goToStep(currentStep + 1);
-        }
-      }
-    }, interval);
+  const [summary, setSummary] = useState({
+    raw: "—",
+    clean: "—",
+    reduction: "—",
+    themes: "—",
+    features: "—",
+    stories: "—",
+    confidence: "—",
+    qaScore: "—",
+    qaFlags: "—",
+    topWsjf: "—",
+    overrides: "0",
+  });
 
-    return () => clearInterval(timer);
-  }, [currentStep, goToStep, isStarted]);
+  const [hitlFlags, setHitlFlags] = useState<HitlFlag[]>([]);
+  const [showHitl, setShowHitl] = useState(false);
+  const [rankedFeatures, setRankedFeatures] = useState<RankedFeature[]>([]);
+  const [prioritiesFinalized, setPrioritiesFinalized] = useState(false);
 
-  const step = STEPS[currentStep - 1];
+  const runId = "#AF-2026-03-14-001";
+
+  const doneCount = useMemo(
+    () =>
+      Object.values(stageStatus).filter((s) => s === "done").length -
+      (stageStatus.config === "done" ? 1 : 0),
+    [stageStatus]
+  );
+
+  const progress = useMemo(() => {
+    if (!runStarted) return 0;
+    if (runFinished) return 100;
+    return Math.min(95, Math.round((doneCount / 5) * 100 + (isRunning ? 10 : 0)));
+  }, [doneCount, isRunning, runFinished, runStarted]);
+
+  const flagCounts = useMemo(() => {
+    const resolved = hitlFlags.filter((f) => f.state === "resolved").length;
+    const overridden = hitlFlags.filter((f) => f.state === "overridden").length;
+    return { total: hitlFlags.length, resolved, overridden };
+  }, [hitlFlags]);
+
+  const overrideAudit = useMemo(() => {
+    return rankedFeatures
+      .map((feature, idx) => ({
+        name: feature.name,
+        from: feature.originalRank,
+        to: idx + 1,
+      }))
+      .filter((entry) => entry.from !== entry.to);
+  }, [rankedFeatures]);
+
+  const brdJsonOutput = useMemo(() => {
+    const payload = {
+      brd_id: "BRD-AF-2026-03-14-001",
+      generated_at: "2026-03-14T10:45:31Z",
+      run_id: runId,
+      model: "claude-opus-4",
+      confidence_score: 0.89,
+      hitl_required: false,
+      hitl_threshold: confidenceThreshold,
+      context: {
+        data_sources: sources.length,
+        date_window: dateWindow,
+        raw_records: 2847,
+        clean_records: 1203,
+        themes_identified: 8,
+        features_generated: 6,
+      },
+      qa: {
+        invest: 0.94,
+        contradiction: 1.0,
+        ambiguity: 0.88,
+        completeness: 0.97,
+        overall: 0.91,
+      },
+      requirements: REQUIREMENTS,
+      wsjf_ranking: rankedFeatures,
+      hitl_flags: hitlFlags,
+      override_audit: overrideAudit,
+    };
+
+    return JSON.stringify(payload, null, 2);
+  }, [confidenceThreshold, dateWindow, hitlFlags, overrideAudit, rankedFeatures, runId, sources.length]);
+
+  const pushLog = (agent: AgentKey, line: string) => {
+    setLogs((prev) => ({ ...prev, [agent]: [...prev[agent], line] }));
+  };
+
+  const setStage = (stage: StageKey, state: StageState) => {
+    setStageStatus((prev) => ({ ...prev, [stage]: state }));
+  };
+
+  const runAgent = async (agent: AgentKey, lines: string[]) => {
+    setActiveStage(agent);
+    setStage(agent, "running");
+    for (const line of lines) {
+      await delay(430);
+      pushLog(agent, line);
+    }
+    setStage(agent, "done");
+  };
+
+  const startPipeline = async () => {
+    if (isRunning || sources.length === 0) return;
+
+    setRunStarted(true);
+    setRunFinished(false);
+    setIsRunning(true);
+    setShowHitl(false);
+    setPrioritiesFinalized(false);
+    setRankedFeatures([]);
+    setHitlFlags([]);
+    setLogs({ scraper: [], cleaner: [], analyst: [], critic: [], prioritizer: [] });
+    setSummary({
+      raw: "—",
+      clean: "—",
+      reduction: "—",
+      themes: "—",
+      features: "—",
+      stories: "—",
+      confidence: "—",
+      qaScore: "—",
+      qaFlags: "—",
+      topWsjf: "—",
+      overrides: "0",
+    });
+
+    setStageStatus({
+      config: "done",
+      scraper: "idle",
+      cleaner: "idle",
+      analyst: "idle",
+      critic: "idle",
+      prioritizer: "idle",
+    });
+
+    await runAgent("scraper", SCRAPER_LOGS);
+    setSummary((prev) => ({ ...prev, raw: "2,847" }));
+
+    await runAgent("cleaner", CLEANER_LOGS);
+    setSummary((prev) => ({ ...prev, clean: "1,203", reduction: "57.7%" }));
+
+    await runAgent("analyst", ANALYST_LOGS);
+    setSummary((prev) => ({ ...prev, themes: "8", features: "6", stories: "18", confidence: "0.89" }));
+
+    await runAgent("critic", CRITIC_LOGS);
+    setHitlFlags(INITIAL_FLAGS);
+    setShowHitl(true);
+    setSummary((prev) => ({ ...prev, qaScore: "0.91", qaFlags: "3" }));
+
+    await runAgent("prioritizer", PRIORITIZER_LOGS);
+    setRankedFeatures(INITIAL_FEATURES);
+    setSummary((prev) => ({ ...prev, topWsjf: "8.4" }));
+
+    setActiveStage("prioritizer");
+    setIsRunning(false);
+    setRunFinished(true);
+  };
+
+  const resetPipeline = () => {
+    setRunStarted(false);
+    setRunFinished(false);
+    setIsRunning(false);
+    setActiveStage("config");
+    setStageStatus({
+      config: "idle",
+      scraper: "idle",
+      cleaner: "idle",
+      analyst: "idle",
+      critic: "idle",
+      prioritizer: "idle",
+    });
+    setLogs({ scraper: [], cleaner: [], analyst: [], critic: [], prioritizer: [] });
+    setHitlFlags([]);
+    setShowHitl(false);
+    setPrioritiesFinalized(false);
+    setRankedFeatures([]);
+    setSummary({
+      raw: "—",
+      clean: "—",
+      reduction: "—",
+      themes: "—",
+      features: "—",
+      stories: "—",
+      confidence: "—",
+      qaScore: "—",
+      qaFlags: "—",
+      topWsjf: "—",
+      overrides: "0",
+    });
+  };
+
+  const updateFlag = (id: string, state: FlagState) => {
+    setHitlFlags((prev) => prev.map((f) => (f.id === id ? { ...f, state } : f)));
+  };
+
+  const moveFeature = (index: number, direction: -1 | 1) => {
+    if (prioritiesFinalized) return;
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= rankedFeatures.length) return;
+
+    setRankedFeatures((prev) => {
+      const copy = [...prev];
+      [copy[index], copy[nextIndex]] = [copy[nextIndex], copy[index]];
+      return copy;
+    });
+  };
+
+  const resetAiOrder = () => {
+    if (prioritiesFinalized) return;
+    setRankedFeatures([...INITIAL_FEATURES]);
+  };
+
+  const finalizePriorities = () => {
+    if (!rankedFeatures.length) return;
+    const overrides = rankedFeatures.filter((f, idx) => f.originalRank !== idx + 1).length;
+    setPrioritiesFinalized(true);
+    setSummary((prev) => ({ ...prev, overrides: String(overrides) }));
+  };
 
   return (
-    <div className="dashboard-flow h-full flex flex-col items-center justify-start relative overflow-x-hidden pt-8 pb-8 -m-6">
-      {/* Background glow */}
-      <div
-        className="absolute w-[600px] h-[600px] rounded-full blur-[200px] opacity-15 pointer-events-none transition-all duration-1000"
-        style={{ background: step.color, top: "10%", left: "30%" }}
-      />
-      <div
-        className="absolute w-[400px] h-[400px] rounded-full blur-[150px] opacity-10 pointer-events-none transition-all duration-1000"
-        style={{ background: step.color, bottom: "10%", right: "20%" }}
-      />
+    <div className="max-w-[1280px] mx-auto grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-6 animate-fade-in">
+      <div className="space-y-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">Pipeline Dashboard</h1>
+            <p className="text-sm text-slate-500 mt-1">
+              Scraper → Cleaner → Analyst → Critic QA → Prioritizer → Ranked BRD
+            </p>
+          </div>
+          <div className="text-right text-xs font-mono text-slate-500">
+            Run ID: {runId}
+            <br />
+            Status: <span className="text-blue-600 font-semibold">{runFinished ? "Complete" : isRunning ? "Running" : "Configuring"}</span>
+          </div>
+        </div>
 
-      {/* Step progress bar (top) */}
-      <div className="fixed top-[64px] left-[260px] right-0 z-30 px-8 py-3">
-        <div className="flex items-center gap-1.5 max-w-4xl mx-auto">
-          {STEPS.map((s, i) => (
-            <div key={s.id} className="flex items-center gap-1.5 flex-1">
-              <div
-                className={`step-dot ${
-                  i + 1 < currentStep ? "completed" : i + 1 === currentStep ? "active" : "pending"
-                }`}
-              />
-              {i < STEPS.length - 1 && (
-                <div className="flex-1 h-[2px] rounded-full overflow-hidden bg-white/5">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: i + 1 < currentStep ? "100%" : i + 1 === currentStep ? `${progress}%` : "0%",
-                      background: `linear-gradient(90deg, ${STEPS[i].color}, ${STEPS[i + 1].color})`,
-                    }}
+        <div className="glass-card p-4">
+          <div className="flex items-center gap-2 overflow-x-auto">
+            {(Object.keys(STAGE_TITLES) as StageKey[]).map((stage, idx, arr) => {
+              const status = stageStatus[stage];
+              const isActive = activeStage === stage && isRunning;
+              return (
+                <div key={stage} className="flex items-center gap-2">
+                  <div className="text-center min-w-[90px]">
+                    <div
+                      className={`w-8 h-8 mx-auto rounded-full border-2 flex items-center justify-center text-xs font-bold ${
+                        status === "done"
+                          ? "bg-emerald-500 border-emerald-500 text-white"
+                          : isActive
+                          ? "bg-blue-100 border-blue-500 text-blue-700"
+                          : "bg-white border-slate-300 text-slate-500"
+                      }`}
+                    >
+                      {idx}
+                    </div>
+                    <p
+                      className={`text-[10px] font-semibold mt-1 ${
+                        isActive
+                          ? "text-blue-600"
+                          : status === "done"
+                          ? "text-emerald-600"
+                          : "text-slate-500"
+                      }`}
+                    >
+                      {STAGE_TITLES[stage].toUpperCase()}
+                    </p>
+                  </div>
+                  {idx < arr.length - 1 && (
+                    <div className={`w-8 h-[2px] ${status === "done" ? "bg-emerald-500" : "bg-slate-300"}`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="glass-card-static bg-white border border-blue-100 rounded-md overflow-hidden">
+          <div className="p-5 border-b border-slate-200 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Settings className="w-5 h-5 text-blue-600" />
+              <div>
+                <p className="text-base font-semibold text-slate-900">Pipeline Configuration</p>
+                <p className="text-xs text-slate-500">Configured from your agent workflow. Start to execute each agent in sequence.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-5 space-y-5">
+            <div>
+              <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-2">Feedback Sources</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                {SOURCE_OPTIONS.map((source) => {
+                  const checked = sources.includes(source.id);
+                  return (
+                    <label
+                      key={source.id}
+                      className={`border rounded-md px-3 py-2 cursor-pointer ${
+                        checked ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white"
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            setSources((prev) =>
+                              e.target.checked
+                                ? [...prev, source.id]
+                                : prev.filter((id) => id !== source.id)
+                            );
+                          }}
+                          className="mt-0.5"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-slate-800">{source.name}</p>
+                          <p className="text-xs text-slate-500">{source.desc}</p>
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Date Range</p>
+                <select
+                  className="w-full h-9 px-3 border border-slate-300 rounded-md text-sm text-slate-700"
+                  value={dateWindow}
+                  onChange={(e) => setDateWindow(e.target.value)}
+                >
+                  <option value="7d">Last 7 days</option>
+                  <option value="14d">Last 14 days</option>
+                  <option value="30d">Last 30 days</option>
+                  <option value="90d">Last 90 days</option>
+                </select>
+              </div>
+
+              <div>
+                <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Confidence Threshold</p>
+                <div className="rounded-md border border-slate-300 px-3 py-2">
+                  <input
+                    type="range"
+                    min={0.5}
+                    max={1}
+                    step={0.05}
+                    value={confidenceThreshold}
+                    onChange={(e) => setConfidenceThreshold(parseFloat(e.target.value))}
+                    className="w-full"
                   />
+                  <p className="text-sm font-mono text-blue-600 text-right">{confidenceThreshold.toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
+              <p className="text-xs text-slate-500">Now generates full BRD report sections after pipeline completes.</p>
+              <div className="flex items-center gap-2">
+                <button className="btn-secondary" onClick={resetPipeline}>
+                  <RotateCcw className="w-4 h-4" /> Reset
+                </button>
+                <button
+                  className="btn-primary"
+                  onClick={startPipeline}
+                  disabled={isRunning || sources.length === 0}
+                >
+                  <Play className="w-4 h-4" />
+                  {isRunning ? "Running..." : "Generate Ranked BRD"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {runStarted && (
+          <div className="glass-card p-5 border border-blue-100">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <CircleDashed className="w-4 h-4 text-blue-600" />
+                <p className="text-sm font-semibold text-slate-800">
+                  {runFinished ? "Pipeline completed" : `Running ${activeStage} agent...`}
+                </p>
+              </div>
+              <span className="text-sm font-mono font-bold text-blue-700">{progress}%</span>
+            </div>
+            <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div className="h-full bg-blue-600 transition-all duration-500" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        )}
+
+        {runStarted && (
+          <div className="space-y-4">
+            <AgentCard
+              title="Scraper Agent"
+              status={stageStatus.scraper}
+              logs={logs.scraper}
+              output={summary.raw !== "—" ? "Records collected: 2,847" : undefined}
+            />
+            <AgentCard
+              title="Cleaner Agent"
+              status={stageStatus.cleaner}
+              logs={logs.cleaner}
+              output={summary.clean !== "—" ? "Output clean records: 1,203" : undefined}
+            />
+            <AgentCard
+              title="Analyst Agent"
+              status={stageStatus.analyst}
+              logs={logs.analyst}
+              output={
+                summary.themes !== "—" ? "Themes: 8 | Stories: 18 | Confidence: 0.89" : undefined
+              }
+            />
+            <AgentCard
+              title="Critic Agent"
+              status={stageStatus.critic}
+              logs={logs.critic}
+              output={summary.qaScore !== "—" ? "QA score: 0.91 | Flags: 3" : undefined}
+            />
+            <AgentCard
+              title="Prioritizer Agent"
+              status={stageStatus.prioritizer}
+              logs={logs.prioritizer}
+              output={summary.topWsjf !== "—" ? "Top WSJF: 8.4" : undefined}
+            />
+          </div>
+        )}
+
+        {runFinished && (
+          <div className="space-y-5">
+            <div className="glass-card-static bg-white border border-blue-100 rounded-md p-5">
+              <h3 className="text-lg font-semibold text-slate-900">Executive Summary</h3>
+              <p className="text-sm text-slate-700 mt-2 leading-relaxed">
+                This BRD consolidates 1,203 validated customer signals (from 2,847 raw records) across
+                7 data sources. BERTopic clustering identified 8 major themes and generated 6 priority
+                requirements. Critic QA scored the output at 0.91 against a 0.80 threshold, so the BRD
+                is approved with minor quality flags for optional human review.
+              </p>
+            </div>
+
+            <div className="glass-card-static bg-white border border-blue-100 rounded-md overflow-hidden">
+              <div className="p-4 bg-blue-100 border-b border-blue-200">
+                <h3 className="text-lg font-bold text-blue-800 uppercase tracking-wide">
+                  BRD Quality Assurance — Critic Agent
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-300">
+                <ScoreCell title="INVEST" score="0.94" detail="17/18 pass" status="✅ PASS" statusClass="text-emerald-600" />
+                <ScoreCell title="CONTRADICTION" score="1.00" detail="No conflicts" status="✅ PASS" statusClass="text-emerald-600" />
+                <ScoreCell title="AMBIGUITY" score="0.88" detail="2 flags" status="⚠ FLAG" statusClass="text-amber-600" />
+                <ScoreCell title="COMPLETENESS" score="0.97" detail="6/6 features" status="✅ PASS" statusClass="text-emerald-600" />
+              </div>
+              <div className="bg-emerald-100 border-t border-emerald-200 px-4 py-3 text-center text-slate-800 font-mono font-semibold">
+                OVERALL QA: 0.91 &nbsp;&nbsp; Threshold: 0.80 &nbsp;&nbsp; ✅ APPROVED
+              </div>
+            </div>
+
+            <div className="glass-card-static bg-white border border-blue-100 rounded-md p-5">
+              <h3 className="text-base font-semibold text-slate-900 mb-3">Data Source Summary</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-600 text-xs uppercase">
+                      <th className="px-3 py-2 text-left">Source</th>
+                      <th className="px-3 py-2 text-right">Collected</th>
+                      <th className="px-3 py-2 text-right">After Cleaning</th>
+                      <th className="px-3 py-2 text-right">% of Clean Dataset</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {SOURCE_BREAKDOWN.map((row) => (
+                      <tr key={row.source} className="border-b border-slate-200">
+                        <td className="px-3 py-2 text-slate-800">{row.source}</td>
+                        <td className="px-3 py-2 text-right text-slate-700">{row.collected}</td>
+                        <td className="px-3 py-2 text-right text-slate-700">{row.clean}</td>
+                        <td className="px-3 py-2 text-right text-slate-700">{row.pct}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="glass-card-static bg-white border border-blue-100 rounded-md p-5">
+              <h3 className="text-base font-semibold text-slate-900 mb-3">Cluster Analysis</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-600 text-xs uppercase">
+                      <th className="px-3 py-2 text-left">Cluster</th>
+                      <th className="px-3 py-2 text-left">Theme</th>
+                      <th className="px-3 py-2 text-right">Volume</th>
+                      <th className="px-3 py-2 text-right">Sentiment</th>
+                      <th className="px-3 py-2 text-center">Rage/Churn</th>
+                      <th className="px-3 py-2 text-center">Auto Elevated</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {THEME_CLUSTERS.map((cluster) => (
+                      <tr key={cluster.id} className="border-b border-slate-200">
+                        <td className="px-3 py-2 font-mono text-slate-800">{cluster.id}</td>
+                        <td className="px-3 py-2 text-slate-800">{cluster.name}</td>
+                        <td className="px-3 py-2 text-right text-slate-700">{cluster.volume}</td>
+                        <td className="px-3 py-2 text-right text-slate-700">{cluster.sentiment.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-center">{cluster.rage ? "YES" : "No"}</td>
+                        <td className="px-3 py-2 text-center">{cluster.elevated ? "YES" : "No"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="glass-card-static bg-white border border-blue-100 rounded-md p-5">
+              <h3 className="text-base font-semibold text-slate-900 mb-3">Functional Requirements</h3>
+              <div className="space-y-4">
+                {REQUIREMENTS.map((req) => (
+                  <div key={req.id} className="border border-slate-200 rounded-md p-4 bg-slate-50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 font-mono">{req.id}</span>
+                      <h4 className="text-sm font-semibold text-slate-900">{req.title}</h4>
+                      <span
+                        className={`ml-auto text-xs px-2 py-1 rounded ${
+                          req.priority === "Critical"
+                            ? "bg-red-100 text-red-700"
+                            : req.priority === "High"
+                            ? "bg-amber-100 text-amber-700"
+                            : req.priority === "Medium"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-slate-100 text-slate-700"
+                        }`}
+                      >
+                        {req.priority}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-700 mb-3">{req.description}</p>
+                    <p className="text-xs text-slate-600 font-mono mb-2">
+                      WSJF = ({req.wsjf.bv} + {req.wsjf.tc} + {req.wsjf.rr}) / {req.wsjf.effort} = {req.wsjf.score.toFixed(1)}
+                    </p>
+                    <div className="space-y-2">
+                      {req.userStories.map((story) => (
+                        <div key={story.id} className="border border-slate-200 rounded p-3 bg-white">
+                          <p className="text-xs font-mono text-blue-700 mb-1">{story.id}</p>
+                          <p className="text-sm text-slate-800 mb-2">{story.story}</p>
+                          <ul className="list-disc list-inside text-xs text-slate-600 space-y-1">
+                            {story.criteria.map((criterion, idx) => (
+                              <li key={idx}>{criterion}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {showHitl && (
+              <div className="glass-card-static bg-white border border-amber-200 rounded-md p-5">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <p className="text-sm font-semibold text-amber-800 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" /> Quality Flags
+                  </p>
+                  <p className="text-xs text-slate-600">
+                    {flagCounts.total} flags | {flagCounts.resolved} resolved | {flagCounts.overridden} overridden
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  {hitlFlags.map((flag) => (
+                    <div
+                      key={flag.id}
+                      className={`rounded-md border p-3 ${
+                        flag.state === "resolved"
+                          ? "bg-emerald-50 border-emerald-200"
+                          : flag.state === "overridden"
+                          ? "bg-slate-50 border-slate-200"
+                          : "bg-white border-amber-200"
+                      }`}
+                    >
+                      <p className="text-xs font-semibold text-slate-800">
+                        {flag.feature} / {flag.story} · {flag.type}
+                      </p>
+                      <p className="text-sm text-slate-700 mt-1">{flag.issue}</p>
+                      <p className="text-xs text-slate-500 mt-1">Current: {flag.current}</p>
+                      <p className="text-xs text-blue-700 mt-1">Suggested: {flag.suggested}</p>
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          className="text-xs px-2 py-1 rounded bg-emerald-100 text-emerald-700"
+                          onClick={() => updateFlag(flag.id, "resolved")}
+                        >
+                          Resolve
+                        </button>
+                        <button
+                          className="text-xs px-2 py-1 rounded bg-slate-100 text-slate-700"
+                          onClick={() => updateFlag(flag.id, "overridden")}
+                        >
+                          Override
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {rankedFeatures.length > 0 && (
+              <div className="glass-card-static bg-white border border-blue-100 rounded-md overflow-hidden">
+                <div className="p-5 border-b border-slate-200">
+                  <p className="text-lg font-semibold text-slate-900">
+                    WSJF Prioritization Requirement Ranking
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    Human override controls included below as requested.
+                  </p>
+                </div>
+                <div className="p-5 space-y-4">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-slate-100 text-slate-600 text-xs uppercase">
+                          <th className="px-2 py-2 text-left">Rank</th>
+                          <th className="px-2 py-2 text-left">Requirement</th>
+                          <th className="px-2 py-2 text-left">Feature</th>
+                          <th className="px-2 py-2 text-center">BV</th>
+                          <th className="px-2 py-2 text-center">TC</th>
+                          <th className="px-2 py-2 text-center">RR</th>
+                          <th className="px-2 py-2 text-center">E</th>
+                          <th className="px-2 py-2 text-center">WSJF</th>
+                          <th className="px-2 py-2 text-center">Align</th>
+                          <th className="px-2 py-2 text-left">Priority</th>
+                          <th className="px-2 py-2 text-left">Move</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rankedFeatures.map((f, idx) => (
+                          <tr key={f.id} className="border-b border-slate-200 text-slate-700">
+                            <td className="px-2 py-2 font-mono">{idx + 1}</td>
+                            <td className="px-2 py-2 font-mono text-blue-700">{f.requirementId}</td>
+                            <td className="px-2 py-2 font-medium">{f.name}</td>
+                            <td className="px-2 py-2 text-center">{f.bv}</td>
+                            <td className="px-2 py-2 text-center">{f.tc}</td>
+                            <td className="px-2 py-2 text-center">{f.rr}</td>
+                            <td className="px-2 py-2 text-center">{f.effort}</td>
+                            <td className="px-2 py-2 text-center font-semibold text-blue-700">
+                              {f.wsjf.toFixed(1)}
+                            </td>
+                            <td className="px-2 py-2 text-center font-mono">
+                              {f.alignment.toFixed(2)}
+                            </td>
+                            <td className="px-2 py-2">
+                              <span
+                                className={`px-2 py-1 rounded text-xs font-semibold ${
+                                  f.priority === "Critical"
+                                    ? "bg-red-100 text-red-700"
+                                    : f.priority === "High"
+                                    ? "bg-amber-100 text-amber-700"
+                                    : f.priority === "Medium"
+                                    ? "bg-blue-100 text-blue-700"
+                                    : "bg-slate-100 text-slate-700"
+                                }`}
+                              >
+                                {f.priority}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2">
+                              <div className="flex items-center gap-1">
+                                <button
+                                  className="px-2 py-1 rounded bg-slate-100 text-slate-700 disabled:opacity-40"
+                                  onClick={() => moveFeature(idx, -1)}
+                                  disabled={idx === 0 || prioritiesFinalized}
+                                >
+                                  ↑
+                                </button>
+                                <button
+                                  className="px-2 py-1 rounded bg-slate-100 text-slate-700 disabled:opacity-40"
+                                  onClick={() => moveFeature(idx, 1)}
+                                  disabled={idx === rankedFeatures.length - 1 || prioritiesFinalized}
+                                >
+                                  ↓
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex gap-2 justify-end">
+                    <button className="btn-secondary" onClick={resetAiOrder} disabled={prioritiesFinalized}>
+                      Reset to AI Order
+                    </button>
+                    <button className="btn-primary" onClick={finalizePriorities} disabled={prioritiesFinalized}>
+                      <CheckCircle2 className="w-4 h-4" />
+                      {prioritiesFinalized ? "Finalized" : "Finalize & Forward"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="glass-card-static bg-white border border-blue-100 rounded-md p-5">
+              <h3 className="text-base font-semibold text-slate-900 mb-3">Human Override Audit</h3>
+              {overrideAudit.length === 0 ? (
+                <p className="text-sm text-slate-600">No override movement yet. Ranking still in AI order.</p>
+              ) : (
+                <div className="space-y-2">
+                  {overrideAudit.map((entry) => (
+                    <div key={entry.name} className="text-sm text-slate-700 border border-slate-200 rounded px-3 py-2 bg-slate-50">
+                      {entry.name}: rank {entry.from} → rank {entry.to}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
-          ))}
-        </div>
-        <div className="text-center mt-1">
-          <span className="text-[10px] uppercase tracking-widest text-slate-600">
-            Step {currentStep} of {STEPS.length}
-          </span>
-        </div>
-      </div>
 
-      {/* Main card area */}
-      <div
-        className={`w-full max-w-2xl px-6 mt-20 md:mt-24 transition-all duration-400 ${
-          transitioning ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"
-        }`}
-      >
-        {!isStarted && (
-          <div className="pipeline-card p-8 mb-6 step-enter text-center">
-            <h3 className="text-xl font-bold text-white mb-2">Pipeline Ready</h3>
-            <p className="text-sm text-slate-500 mb-5">
-              Click start to begin processing from Step 1.
-            </p>
-            <button
-              onClick={() => {
-                setCurrentStep(1);
-                setProgress(0);
-                setIsStarted(true);
-              }}
-              className="btn-primary"
-            >
-              Start Pipeline
-            </button>
-          </div>
-        )}
-
-        {/* Step icon + title */}
-        <div className={`text-center mb-6 step-enter ${!isStarted ? "opacity-50" : ""}`}>
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-            style={{ background: step.color + "20", color: step.color }}
-          >
-            <step.icon className="w-8 h-8" />
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">{step.title}</h1>
-          <p className="text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
-            {DESCRIPTIONS[currentStep]}
-          </p>
-        </div>
-
-        {/* Step-specific content */}
-        {isStarted && (
-          <div className="pipeline-card p-8 glow-border-anim step-enter" style={{ animationDelay: "0.15s" }}>
-            <StepContent step={currentStep} onAction={() => goToStep(currentStep + 1)} />
-          </div>
-        )}
-
-        {/* Skip / manual controls */}
-        {isStarted && currentStep < STEPS.length && STEPS[currentStep - 1].duration > 0 && (
-          <div className="text-center mt-4 step-enter" style={{ animationDelay: "0.3s" }}>
-            <button
-              onClick={() => goToStep(currentStep + 1)}
-              className="text-xs text-slate-600 hover:text-slate-400 transition-colors cursor-pointer"
-            >
-              Skip →
-            </button>
-          </div>
-        )}
-
-        {/* Restart on final step */}
-        {currentStep === 10 && (
-          <div className="text-center mt-6 step-enter" style={{ animationDelay: "0.4s" }}>
-            <button
-              onClick={() => {
-                setIsStarted(false);
-                goToStep(1);
-              }}
-              className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 cursor-pointer transition-colors"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Run Pipeline Again
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* -------------------------------------------------------
-   Step-specific content components
-   ------------------------------------------------------- */
-function StepContent({ step, onAction }: { step: number; onAction: () => void }) {
-  switch (step) {
-    case 1: return <Step1Feedback />;
-    case 2: return <Step2Cleaning />;
-    case 3: return <Step3Clustering />;
-    case 4: return <Step4BRDGen />;
-    case 5: return <Step5Validation />;
-    case 6: return <Step6HumanReview onAction={onAction} />;
-    case 7: return <Step7Priority />;
-    case 8: return <Step8Epics />;
-    case 9: return <Step9Blockchain />;
-    case 10: return <Step10Final />;
-    default: return null;
-  }
-}
-
-/* --- STEP 1: Feedback Ingestion --- */
-function Step1Feedback() {
-  const sources = [
-    { name: "Reddit", count: 847, color: "#ff6b35" },
-    { name: "App Store", count: 312, color: "#007aff" },
-    { name: "Google Play", count: 489, color: "#34a853" },
-    { name: "Support Tickets", count: 156, color: "#8b5cf6" },
-  ];
-
-  return (
-    <div className="space-y-4">
-      {sources.map((src, i) => (
-        <div
-          key={src.name}
-          className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.03] border border-white/5"
-          style={{ animation: `rank-slide 0.5s ${i * 0.1}s ease both` }}
-        >
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold" style={{ background: src.color + "20", color: src.color }}>
-            {src.name[0]}
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-semibold text-white">{src.name}</div>
-            <div className="h-1.5 rounded-full bg-white/5 mt-1.5 overflow-hidden">
-              <div
-                className="h-full rounded-full"
-                style={{
-                  background: src.color,
-                  width: `${(src.count / 847) * 100}%`,
-                  animation: `progress-fill 1.5s ${0.3 + i * 0.15}s ease both`,
-                }}
-              />
+            <div className="glass-card-static bg-white border border-blue-100 rounded-md p-5">
+              <h3 className="text-base font-semibold text-slate-900 mb-3">Raw JSON Output</h3>
+              <pre className="bg-slate-900 text-sky-200 text-xs p-4 rounded-md overflow-auto max-h-[420px]">
+                {brdJsonOutput}
+              </pre>
             </div>
           </div>
-          <span className="text-xs font-mono text-slate-500">{src.count}</span>
-          <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: src.color }} />
-        </div>
-      ))}
-      <div className="text-center pt-2">
-        <span className="text-xs text-slate-600 font-mono">1,804 signals collected</span>
+        )}
       </div>
-    </div>
-  );
-}
 
-/* --- STEP 2: Cleaning --- */
-function Step2Cleaning() {
-  const operations = [
-    { label: "Duplicates removed", value: 234, icon: "×" },
-    { label: "Language detected", value: "EN, ES, FR", icon: "🌐" },
-    { label: "Noise filtered", value: 89, icon: "⊘" },
-    { label: "Records normalized", value: "1,481", icon: "✓" },
-  ];
-
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      {operations.map((op, i) => (
-        <div
-          key={op.label}
-          className="p-4 rounded-xl bg-white/[0.03] border border-white/5 text-center"
-          style={{ animation: `step-enter 0.5s ${i * 0.1}s ease both` }}
-        >
-          <div className="text-2xl mb-2">{op.icon}</div>
-          <div className="text-lg font-bold text-white">{op.value}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">{op.label}</div>
+      <aside className="space-y-4">
+        <div className="glass-card-static bg-white border border-blue-100 rounded-md p-4">
+          <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-3">Pipeline Summary</p>
+          <SidebarStat label="Raw Records" value={summary.raw} />
+          <SidebarStat label="Clean Records" value={summary.clean} />
+          <SidebarStat label="Reduction" value={summary.reduction} />
+          <SidebarStat label="Themes" value={summary.themes} />
+          <SidebarStat label="Features" value={summary.features} />
+          <SidebarStat label="User Stories" value={summary.stories} />
+          <SidebarStat label="Confidence" value={summary.confidence} />
+          <SidebarStat label="QA Score" value={summary.qaScore} />
+          <SidebarStat label="QA Flags" value={summary.qaFlags} />
+          <SidebarStat label="Top WSJF" value={summary.topWsjf} />
+          <SidebarStat label="Overrides" value={summary.overrides} />
+          <SidebarStat label="Stage" value={runStarted ? `${doneCount} / 5` : "0 / 5"} />
         </div>
-      ))}
-    </div>
-  );
-}
 
-/* --- STEP 3: Clustering --- */
-function Step3Clustering() {
-  const clusters = [
-    { name: "Upload Failures", count: 127, pct: 38 },
-    { name: "Performance Issues", count: 89, pct: 27 },
-    { name: "UI/UX Problems", count: 64, pct: 19 },
-    { name: "Feature Requests", count: 53, pct: 16 },
-  ];
-
-  return (
-    <div className="space-y-3">
-      {clusters.map((c, i) => (
-        <div
-          key={c.name}
-          className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.03] border border-white/5"
-          style={{ animation: `rank-slide 0.5s ${i * 0.12}s ease both` }}
-        >
-          <div className="w-10 h-10 rounded-lg bg-purple-500/15 flex items-center justify-center">
-            <Brain className="w-5 h-5 text-purple-400" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-semibold text-white">{c.name}</span>
-              <span className="text-xs text-slate-500">{c.count} mentions</span>
-            </div>
-            <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-purple-500 to-blue-500"
-                style={{ width: `${c.pct}%`, animation: `progress-fill 1s ${0.3 + i * 0.1}s ease both` }}
-              />
-            </div>
-          </div>
-        </div>
-      ))}
-      <div className="text-center pt-1">
-        <span className="text-xs font-mono text-slate-600">4 clusters identified via BERTopic</span>
-      </div>
-    </div>
-  );
-}
-
-/* --- STEP 4: BRD Generation --- */
-function Step4BRDGen() {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3 p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/10">
-        <Sparkles className="w-5 h-5 text-yellow-400" />
-        <span className="text-sm text-yellow-300 font-medium">Analyst Agent is writing…</span>
-      </div>
-      {["Upload Reliability BRD", "Performance Optimization BRD"].map((title, i) => (
-        <div
-          key={title}
-          className="p-4 rounded-xl bg-white/[0.03] border border-white/5"
-          style={{ animation: `step-enter 0.6s ${0.4 + i * 0.3}s ease both` }}
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <FileText className="w-5 h-5 text-blue-400" />
-            <span className="text-sm font-semibold text-white">{title}</span>
-            <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400">Generating</span>
-          </div>
-          <div className="space-y-1.5 pl-8">
-            {["Problem Statement", "Success Metrics", "Acceptance Criteria", "WSJF Score"].map((f, j) => (
-              <div key={f} className="flex items-center gap-2" style={{ animation: `rank-slide 0.4s ${0.6 + i * 0.3 + j * 0.1}s ease both` }}>
-                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                <span className="text-xs text-slate-500">{f}</span>
+        <div className="glass-card-static bg-white border border-blue-100 rounded-md p-4">
+          <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-3">Agent Status</p>
+          {(["scraper", "cleaner", "analyst", "critic", "prioritizer"] as AgentKey[]).map((agent) => {
+            const status = stageStatus[agent];
+            const dot =
+              status === "done"
+                ? "bg-emerald-500"
+                : status === "running"
+                ? "bg-blue-500 animate-pulse"
+                : "bg-slate-300";
+            const text =
+              status === "done"
+                ? "text-emerald-600"
+                : status === "running"
+                ? "text-blue-600"
+                : "text-slate-500";
+            return (
+              <div key={agent} className="flex items-center gap-2 py-1.5">
+                <span className={`w-2.5 h-2.5 rounded-full ${dot}`} />
+                <span className="text-sm text-slate-700 capitalize">{agent}</span>
+                <span className={`ml-auto text-xs font-medium ${text}`}>{status}</span>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      ))}
+      </aside>
     </div>
   );
 }
 
-/* --- STEP 5: Validation --- */
-function Step5Validation() {
-  const checks = [
-    { label: "No ambiguous language", pass: true },
-    { label: "Acceptance criteria present", pass: true },
-    { label: "Measurable success metrics", pass: true },
-    { label: "WSJF score > threshold", pass: true },
-    { label: "Evidence linked", pass: true },
-  ];
-
+function AgentCard({
+  title,
+  status,
+  logs,
+  output,
+}: {
+  title: string;
+  status: StageState;
+  logs: string[];
+  output?: string;
+}) {
   return (
-    <div className="space-y-4">
-      <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5 relative overflow-hidden">
-        <div className="flex items-center gap-3 mb-4">
-          <ShieldCheck className="w-5 h-5 text-emerald-400" />
-          <span className="text-sm font-semibold text-white">Upload Reliability BRD</span>
-          <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold">
-            CONFIDENCE: 92%
-          </span>
-        </div>
-        <div className="space-y-2">
-          {checks.map((c, i) => (
-            <div
-              key={c.label}
-              className="flex items-center gap-3 text-sm"
-              style={{ animation: `rank-slide 0.4s ${i * 0.15}s ease both` }}
-            >
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span className="text-slate-400">{c.label}</span>
+    <div className="glass-card-static bg-white border border-blue-100 rounded-md overflow-hidden">
+      <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+        <p className="text-sm font-semibold text-slate-900">{title}</p>
+        <span
+          className={`text-xs px-2 py-0.5 rounded ${
+            status === "done"
+              ? "bg-emerald-100 text-emerald-700"
+              : status === "running"
+              ? "bg-blue-100 text-blue-700"
+              : "bg-slate-100 text-slate-600"
+          }`}
+        >
+          {status.toUpperCase()}
+        </span>
+      </div>
+      <div className="p-4">
+        <div className="rounded-md bg-slate-900 border border-slate-700 p-3 h-36 overflow-auto">
+          {logs.length === 0 ? (
+            <p className="text-slate-500 text-xs font-mono">Waiting to run...</p>
+          ) : (
+            <div className="space-y-1">
+              {logs.map((line, idx) => (
+                <p key={`${line}-${idx}`} className="text-[11px] text-sky-300 font-mono leading-relaxed">
+                  {line}
+                </p>
+              ))}
             </div>
-          ))}
+          )}
         </div>
-        {/* Scan animation overlay */}
-        <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent pointer-events-none" style={{ animation: "scan-line 2s ease-in-out infinite" }} />
-      </div>
-      <div className="text-center">
-        <span className="text-xs font-mono text-slate-600">Critic Agent: all checks passed ✓</span>
-      </div>
-    </div>
-  );
-}
-
-/* --- STEP 6: Human Review (manual) --- */
-function Step6HumanReview({ onAction }: { onAction: () => void }) {
-  return (
-    <div className="space-y-5">
-      {/* BRD Preview */}
-      <div className="p-5 rounded-xl bg-white/[0.03] border border-blue-500/15">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-          <span className="text-[10px] uppercase tracking-widest text-blue-400 font-bold">AI-Generated BRD Preview</span>
-        </div>
-
-        <div className="mb-4">
-          <h4 className="text-xs uppercase tracking-wider text-slate-500 mb-1">Problem Statement</h4>
-          <p className="text-sm text-slate-300 leading-relaxed">
-            Users experience crashes during photo uploads on mobile devices. Analysis of 127 feedback mentions
-            reveals upload failures on files &gt;5MB, with no retry mechanism or progress indication.
-          </p>
-        </div>
-
-        <div>
-          <h4 className="text-xs uppercase tracking-wider text-slate-500 mb-2">Acceptance Criteria</h4>
-          <ul className="space-y-1.5">
-            {[
-              "Upload success for files ≤10MB",
-              "Automatic retry on network failure (max 3 attempts)",
-              "Display real-time upload progress indicator",
-              "Graceful error messaging for unsupported file types",
-            ].map((text) => (
-              <li key={text} className="flex items-start gap-2 text-sm text-slate-400">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                {text}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="mt-4 flex items-center gap-4">
-          <div className="text-[11px] text-slate-600">
-            <span className="text-slate-500">Confidence:</span>{" "}
-            <span className="text-emerald-400 font-bold">92%</span>
+        {output && (
+          <div className="mt-2 text-xs bg-blue-50 border border-blue-100 text-blue-700 rounded px-2 py-1 flex items-center gap-1">
+            <Terminal className="w-3.5 h-3.5" /> {output}
           </div>
-          <div className="text-[11px] text-slate-600">
-            <span className="text-slate-500">WSJF:</span>{" "}
-            <span className="text-blue-400 font-bold">12.5</span>
-          </div>
-          <div className="text-[11px] text-slate-600">
-            <span className="text-slate-500">Evidence:</span>{" "}
-            <span className="text-purple-400 font-bold">127 mentions</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Action buttons */}
-      <div className="flex items-center justify-center gap-3">
-        <button
-          onClick={onAction}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-sm cursor-pointer transition-all shadow-lg shadow-emerald-500/20"
-        >
-          <CheckCircle2 className="w-4 h-4" />
-          Approve
-        </button>
-        <button
-          onClick={onAction}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 font-semibold text-sm cursor-pointer transition-all"
-        >
-          <Edit3 className="w-4 h-4" />
-          Edit
-        </button>
-        <button
-          onClick={onAction}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white/5 border border-red-500/20 hover:bg-red-500/10 text-red-400 font-semibold text-sm cursor-pointer transition-all"
-        >
-          <XCircle className="w-4 h-4" />
-          Reject
-        </button>
+        )}
       </div>
     </div>
   );
 }
 
-/* --- STEP 7: Priority --- */
-function Step7Priority() {
-  const items = [
-    { rank: 1, name: "Photo Upload Stability", score: 12.5, bv: 10, tc: 9, rr: 8 },
-    { rank: 2, name: "Performance Optimization", score: 8.8, bv: 9, tc: 8, rr: 6 },
-    { rank: 3, name: "UI Navigation Fix", score: 7.3, bv: 7, tc: 6, rr: 3 },
-  ];
-
+function SidebarStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="space-y-3">
-      {items.map((item, i) => (
-        <div
-          key={item.rank}
-          className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.03] border border-white/5"
-          style={{ animation: `rank-slide 0.5s ${i * 0.15}s ease both` }}
-        >
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500/20 to-yellow-500/20 flex items-center justify-center">
-            <span className="text-sm font-bold text-orange-400">#{item.rank}</span>
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-semibold text-white">{item.name}</div>
-            <div className="flex items-center gap-3 mt-1">
-              <span className="text-[10px] text-slate-600">BV:{item.bv}</span>
-              <span className="text-[10px] text-slate-600">TC:{item.tc}</span>
-              <span className="text-[10px] text-slate-600">RR:{item.rr}</span>
-            </div>
-          </div>
-          <div className="text-right">
-            <span className="text-lg font-bold text-white">{item.score}</span>
-            <span className="text-[10px] text-slate-600 block">WSJF</span>
-          </div>
-        </div>
-      ))}
+    <div className="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-none">
+      <span className="text-sm text-slate-500">{label}</span>
+      <span className="text-sm font-medium text-slate-800">{value}</span>
     </div>
   );
 }
 
-/* --- STEP 8: Epic Generation --- */
-function Step8Epics() {
-  const stories = [
-    { id: "US-001", title: "Implement chunked upload", points: 5 },
-    { id: "US-002", title: "Add retry mechanism", points: 3 },
-    { id: "US-003", title: "Build progress indicator", points: 3 },
-    { id: "US-004", title: "Error handling for file types", points: 2 },
-  ];
-
+function ScoreCell({
+  title,
+  score,
+  detail,
+  status,
+  statusClass,
+}: {
+  title: string;
+  score: string;
+  detail: string;
+  status: string;
+  statusClass: string;
+}) {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3 p-3 rounded-xl bg-purple-500/5 border border-purple-500/10">
-        <Blocks className="w-5 h-5 text-purple-400" />
-        <div>
-          <span className="text-sm font-semibold text-white">Epic: Photo Upload Stability</span>
-          <span className="text-xs text-slate-500 ml-2">4 stories · 13 points</span>
-        </div>
-      </div>
-      {stories.map((s, i) => (
-        <div
-          key={s.id}
-          className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/5"
-          style={{ animation: `rank-slide 0.5s ${0.2 + i * 0.12}s ease both` }}
-        >
-          <span className="text-[10px] font-mono text-slate-600 w-14">{s.id}</span>
-          <span className="text-sm text-slate-300 flex-1">{s.title}</span>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-bold">
-            {s.points} pts
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* --- STEP 9: Blockchain --- */
-function Step9Blockchain() {
-  const records = [
-    { event: "BRD Generated", hash: "0xabc123...345678" },
-    { event: "BRD Approved", hash: "0xdef456...789012" },
-    { event: "Epic Created", hash: "0x456789...901234" },
-  ];
-
-  return (
-    <div className="space-y-3">
-      {records.map((r, i) => (
-        <div
-          key={i}
-          className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.03] border border-teal-500/10"
-          style={{ animation: `rank-slide 0.5s ${i * 0.2}s ease both` }}
-        >
-          <div className="w-10 h-10 rounded-lg bg-teal-500/15 flex items-center justify-center" style={{ animation: "chain-pulse 2s infinite", animationDelay: `${i * 0.3}s` }}>
-            <Shield className="w-5 h-5 text-teal-400" />
-          </div>
-          <div className="flex-1">
-            <span className="text-sm font-semibold text-white">{r.event}</span>
-            <div className="flex items-center gap-1 mt-0.5">
-              <Hash className="w-3 h-3 text-slate-600" />
-              <span className="text-xs font-mono text-teal-400">{r.hash}</span>
-            </div>
-          </div>
-          <ExternalLink className="w-4 h-4 text-slate-600" />
-        </div>
-      ))}
-      <div className="text-center pt-1">
-        <span className="text-xs font-mono text-slate-600">Polygon Amoy Testnet · 3 TX confirmed</span>
-      </div>
-    </div>
-  );
-}
-
-/* --- STEP 10: Final Report --- */
-function Step10Final() {
-  return (
-    <div className="space-y-4">
-      {/* Top issue */}
-      <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/15 text-center" style={{ animation: "step-enter 0.5s ease both" }}>
-        <span className="text-[10px] uppercase tracking-widest text-blue-400 font-bold">Top Issue Detected</span>
-        <h3 className="text-lg font-bold text-white mt-1">Photo Upload Failure</h3>
-        <span className="text-sm text-slate-500">127 mentions across 3 sources</span>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "BRDs Generated", value: "2", color: "text-yellow-400" },
-          { label: "Epics Created", value: "1", color: "text-purple-400" },
-          { label: "Blockchain TX", value: "3", color: "text-teal-400" },
-        ].map((stat, i) => (
-          <div
-            key={stat.label}
-            className="p-3 rounded-xl bg-white/[0.03] border border-white/5 text-center"
-            style={{ animation: `step-enter 0.5s ${0.2 + i * 0.1}s ease both` }}
-          >
-            <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
-            <div className="text-[10px] text-slate-500 mt-0.5">{stat.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Links */}
-      <div className="flex items-center justify-center gap-3 pt-2" style={{ animation: "step-enter 0.5s 0.5s ease both" }}>
-        <Link href="/brds" className="inline-flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 no-underline transition-colors">
-          <FileText className="w-4 h-4" /> View BRDs <ArrowRight className="w-3 h-3" />
-        </Link>
-        <span className="text-slate-700">·</span>
-        <Link href="/epics" className="inline-flex items-center gap-1.5 text-sm text-purple-400 hover:text-purple-300 no-underline transition-colors">
-          <Blocks className="w-4 h-4" /> View Epics <ArrowRight className="w-3 h-3" />
-        </Link>
-        <span className="text-slate-700">·</span>
-        <Link href="/audit" className="inline-flex items-center gap-1.5 text-sm text-teal-400 hover:text-teal-300 no-underline transition-colors">
-          <Shield className="w-4 h-4" /> Audit Trail <ArrowRight className="w-3 h-3" />
-        </Link>
-      </div>
+    <div className="p-6 text-center bg-slate-50">
+      <p className="text-xs tracking-[0.18em] text-slate-500 font-semibold">{title}</p>
+      <p className="text-3xl font-bold text-slate-800 font-mono mt-2">{score}</p>
+      <p className="text-lg text-slate-600 mt-2">{detail}</p>
+      <p className={`text-xl font-semibold mt-2 ${statusClass}`}>{status}</p>
     </div>
   );
 }

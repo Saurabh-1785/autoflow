@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoFlow Intelligence — PO Workspace</title>
+<meta name="description" content="Product Owner Workspace for epic decomposition, user story refinement, and sprint planning.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-left"><a href="index.html" style="color:#fff;text-decoration:none;display:flex;align-items:center;gap:10px"><i data-lucide="workflow"></i> AutoFlow Intelligence</a></div>
+  <div class="header-center">Projects / AutoFlow Intelligence / <span>PO Workspace</span></div>
+  <div class="header-right">
+    <div class="bell"><i data-lucide="bell" style="width:18px;height:18px"></i><div class="badge">3</div></div>
+    <div class="avatar">PO</div>
+    <span>PO Console</span>
+  </div>
+</header>
+
+<div class="app-layout">
+<nav class="sidebar">
+  <ul class="nav-items">
+    <li class="nav-item" onclick="location.href='index.html'"><i data-lucide="home" style="width:16px;height:16px"></i> Home</li>
+    <li class="nav-item"><i data-lucide="bar-chart-3" style="width:16px;height:16px"></i> Dashboard</li>
+    <li class="nav-item" onclick="location.href='workspace.html'"><i data-lucide="search" style="width:16px;height:16px"></i> BA Workspace</li>
+    <li class="nav-item" onclick="location.href='pm-workspace.html'"><i data-lucide="target" style="width:16px;height:16px"></i> PM Workspace</li>
+    <li class="nav-item active"><i data-lucide="list-checks" style="width:16px;height:16px"></i> PO Workspace</li>
+    <li class="nav-item"><i data-lucide="file-text" style="width:16px;height:16px"></i> BRD History <span class="nav-badge">12</span></li>
+    <li class="nav-item"><i data-lucide="scroll-text" style="width:16px;height:16px"></i> Audit Log</li>
+    <li class="nav-item"><i data-lucide="settings" style="width:16px;height:16px"></i> Settings</li>
+  </ul>
+</nav>
+
+<main class="main-content" style="margin-right:0;">
+  <div class="page-title-row">
+    <div><h1 class="page-title">Product Owner Workspace</h1><p class="page-subtitle">Epic decomposition, user story refinement, and sprint planning</p></div>
+  </div>
+
+  <div class="coming-soon-card">
+    <div class="cs-icon"><i data-lucide="list-checks" style="width:48px;height:48px;color:var(--color-accent)"></i></div>
+    <div class="cs-title">PO Workspace &mdash; Coming Soon</div>
+    <div class="cs-desc">The Product Owner Workspace will receive prioritized features from the PM pipeline and enable:</div>
+    <div class="cs-features">
+      <div class="cs-feature">
+        <div class="cs-feature-num">1</div>
+        <div>
+          <div class="cs-feature-title">Epic Decomposition</div>
+          <div class="cs-feature-desc">Auto-decompose prioritized features into epics with clear scope boundaries, acceptance criteria, and dependency mapping.</div>
+        </div>
+      </div>
+      <div class="cs-feature">
+        <div class="cs-feature-num">2</div>
+        <div>
+          <div class="cs-feature-title">User Story Refinement</div>
+          <div class="cs-feature-desc">AI-assisted refinement of user stories with automatic story point estimation, INVEST validation, and Gherkin test scenarios.</div>
+        </div>
+      </div>
+      <div class="cs-feature">
+        <div class="cs-feature-num">3</div>
+        <div>
+          <div class="cs-feature-title">Sprint Planning</div>
+          <div class="cs-feature-desc">Velocity-based sprint capacity planning with automatic story allocation, sprint goal generation, and burndown forecasting.</div>
+        </div>
+      </div>
+      <div class="cs-feature">
+        <div class="cs-feature-num">4</div>
+        <div>
+          <div class="cs-feature-title">Backlog Management</div>
+          <div class="cs-feature-desc">Intelligent backlog grooming with dependency-aware ordering, technical debt tracking, and stakeholder visibility dashboards.</div>
+        </div>
+      </div>
+    </div>
+    <div class="cs-integration">
+      <div class="cs-int-label">n8n Integration Point</div>
+      <div class="cs-int-code">POST /webhook/po-agent-trigger &mdash; Sub-Workflow 7 (Epic Decomposition &amp; Sprint Planning)</div>
+    </div>
+    <a href="workspace.html" class="btn-primary" style="margin-top:24px;"><i data-lucide="arrow-left" style="width:14px;height:14px"></i> Back to BA Workspace</a>
+  </div>
+</main>
+</div>
+
+<script>document.addEventListener('DOMContentLoaded', () => { if (window.lucide) lucide.createIcons(); });</script>
+</body>
+</html>

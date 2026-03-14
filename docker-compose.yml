@@ -37,6 +37,7 @@ services:
       - WEBHOOK_URL=http://localhost:5678/
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - SHEET_ID=${SHEET_ID}
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:
