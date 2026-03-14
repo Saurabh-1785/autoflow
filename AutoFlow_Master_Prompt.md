@@ -168,18 +168,15 @@ PostgreSQL (priority_queue) ──► n8n Epic Workflow ──► Claude API (St
 | Tool | Why |
 |------|-----|
 | n8n (self-hosted, Docker) | Visual workflow orchestration |
-| Claude 3.5 Sonnet (Anthropic API) | BRD generation, story writing, reviews |
+| Gemini 3.1  (google gemini  API) | BRD generation, story writing, reviews |
 | BERTopic (Python) | Topic clustering — cheaper and faster than LLM for this |
 | sentence-transformers | Semantic deduplication |
 
 ### Blockchain
 | Tool | Why |
 |------|-----|
-| Polygon Mumbai testnet | Low gas, fast finality, EVM compatible |
-| Solidity 0.8.x | Smart contract language |
-| Hardhat | Local development + testnet deployment |
-| Pinata / IPFS | Off-chain document storage |
-| Polygonscan | Public audit explorer |
+| Solana testnet | Low gas, fast finality, EVM compatible |
+| Rust | Smart contract language |
 
 ### Infrastructure
 | Tool | Why |
@@ -193,7 +190,7 @@ PostgreSQL (priority_queue) ──► n8n Epic Workflow ──► Claude API (St
 
 > **This is the most important section. Read before writing any logic.**
 
-### RULE 1: Use AI (Claude) ONLY when the task requires language understanding or generation
+### RULE 1: Use AI ONLY when the task requires language understanding or generation
 
 ✅ **USE AI FOR:**
 - Drafting a BRD from a list of customer complaints (requires understanding + writing)

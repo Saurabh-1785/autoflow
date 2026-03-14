@@ -1,0 +1,60 @@
+INSERT INTO raw_feedback (source, external_id, text, author_id, author_tier, sentiment, sentiment_score, collected_at) VALUES
+-- Theme A: Dashboard performance (12)
+('sheet', 'demo_001', 'The dashboard takes forever to load when I have more than 10 projects open. This is killing my productivity.', 'user_001', 'pro', 'negative', 0.91, NOW() - INTERVAL '2 days'),
+('twitter', 'demo_002', 'Why does the dashboard freeze when I switch tabs? Fix this please! #bug', 'user_002', 'free', 'negative', 0.85, NOW() - INTERVAL '1 days'),
+('app_store', 'demo_003', 'Great app, but dashboard performance needs work. It is very slow on large datasets.', 'user_003', 'enterprise', 'neutral', 0.4, NOW() - INTERVAL '5 days'),
+('reddit', 'demo_004', 'Is anyone else experiencing terrible lag on the main dashboard screen?', 'user_004', 'pro', 'negative', 0.88, NOW() - INTERVAL '12 hours'),
+('sheet', 'demo_005', 'Loading 50+ tasks crashes the UI consistently.', 'user_005', 'enterprise', 'negative', 0.95, NOW() - INTERVAL '3 days'),
+('app_store', 'demo_006', 'Takes 10 seconds to render the dashboard charts.', 'user_006', 'pro', 'negative', 0.80, NOW() - INTERVAL '2 days'),
+('twitter', 'demo_007', 'Love the features, but the dashboard is incredibly slow...', 'user_007', 'free', 'neutral', 0.50, NOW() - INTERVAL '6 hours'),
+('reddit', 'demo_008', 'Performance degradation on dashboard recently. Any ETA on a fix?', 'user_008', 'enterprise', 'negative', 0.70, NOW() - INTERVAL '4 days'),
+('sheet', 'demo_009', 'Scrolling is jittery on the dashboard.', 'user_009', 'pro', 'negative', 0.65, NOW() - INTERVAL '1 days'),
+('app_store', 'demo_010', 'Can we get pagination on the dashboard so it loads faster?', 'user_010', 'pro', 'neutral', 0.40, NOW() - INTERVAL '7 days'),
+('twitter', 'demo_011', 'Dashboard takes >5 seconds to load. Unacceptable for a pro tool.', 'user_011', 'enterprise', 'negative', 0.92, NOW() - INTERVAL '2 days'),
+('reddit', 'demo_012', 'The new update broke dashboard loading speed.', 'user_012', 'free', 'negative', 0.81, NOW() - INTERVAL '5 hours'),
+
+-- Theme B: Missing dark mode (10)
+('app_store', 'demo_013', 'My eyes bleed at night. PLEASE add dark mode.', 'user_013', 'free', 'negative', 0.85, NOW() - INTERVAL '10 days'),
+('twitter', 'demo_014', '2026 and still no dark mode? Seriously?', 'user_014', 'pro', 'negative', 0.88, NOW() - INTERVAL '4 days'),
+('reddit', 'demo_015', 'Any plugin to get dark mode working?', 'user_015', 'enterprise', 'neutral', 0.30, NOW() - INTERVAL '2 days'),
+('sheet', 'demo_016', 'Dark mode is essential for developers. We need this.', 'user_016', 'pro', 'negative', 0.75, NOW() - INTERVAL '1 days'),
+('app_store', 'demo_017', 'I would rate 5 stars if there was a dark theme.', 'user_017', 'free', 'neutral', 0.45, NOW() - INTERVAL '8 days'),
+('twitter', 'demo_018', 'Is dark mode on the roadmap?', 'user_018', 'pro', 'neutral', 0.20, NOW() - INTERVAL '3 days'),
+('reddit', 'demo_019', 'Lack of dark mode makes the app unusable for long sessions.', 'user_019', 'enterprise', 'negative', 0.80, NOW() - INTERVAL '5 days'),
+('sheet', 'demo_020', 'Please implement dark UI theme.', 'user_020', 'pro', 'neutral', 0.35, NOW() - INTERVAL '6 days'),
+('app_store', 'demo_021', 'Blinding white background. Needs dark mode yesterday.', 'user_021', 'free', 'negative', 0.89, NOW() - INTERVAL '12 days'),
+('twitter', 'demo_022', '+1 for Dark Mode support.', 'user_022', 'enterprise', 'positive', 0.60, NOW() - INTERVAL '1 days'),
+
+-- Theme C: No mobile app / poor mobile experience (11)
+('app_store', 'demo_023', 'The mobile web version is completely broken.', 'user_023', 'pro', 'negative', 0.95, NOW() - INTERVAL '2 days'),
+('reddit', 'demo_024', 'When are we getting an iOS app?', 'user_024', 'enterprise', 'neutral', 0.40, NOW() - INTERVAL '7 days'),
+('twitter', 'demo_025', 'Trying to check project status on my phone is a nightmare.', 'user_025', 'pro', 'negative', 0.88, NOW() - INTERVAL '3 days'),
+('sheet', 'demo_026', 'Navigation menus dont render on Safari iOS.', 'user_026', 'free', 'negative', 0.90, NOW() - INTERVAL '1 days'),
+('app_store', 'demo_027', 'Need a native mobile app for on-the-go PMs.', 'user_027', 'enterprise', 'neutral', 0.50, NOW() - INTERVAL '15 days'),
+('reddit', 'demo_028', 'Is there an Android version planned?', 'user_028', 'free', 'neutral', 0.30, NOW() - INTERVAL '4 days'),
+('twitter', 'demo_029', 'Mobile web responsive design is terrible. Buttons overlap.', 'user_029', 'pro', 'negative', 0.85, NOW() - INTERVAL '2 days'),
+('sheet', 'demo_030', 'Cant tap the save button on mobile.', 'user_030', 'enterprise', 'negative', 0.92, NOW() - INTERVAL '6 days'),
+('app_store', 'demo_031', 'Please build a dedicated mobile client.', 'user_031', 'pro', 'neutral', 0.45, NOW() - INTERVAL '8 days'),
+('reddit', 'demo_032', 'The website just scales down weirdly on my phone.', 'user_032', 'free', 'negative', 0.75, NOW() - INTERVAL '3 days'),
+('twitter', 'demo_033', 'I refuse to upgrade to Enterprise until there is a mobile app.', 'user_033', 'enterprise', 'negative', 0.98, NOW() - INTERVAL '1 days'),
+
+-- Theme D: Broken CSV export (9)
+('sheet', 'demo_034', 'The CSV export leaves out the assignee column entirely.', 'user_034', 'pro', 'negative', 0.90, NOW() - INTERVAL '1 days'),
+('reddit', 'demo_035', 'How do I export my project data? The export button just times out.', 'user_035', 'enterprise', 'negative', 0.85, NOW() - INTERVAL '2 days'),
+('app_store', 'demo_036', 'Exporting to CSV mangles the dates.', 'user_036', 'free', 'negative', 0.80, NOW() - INTERVAL '3 days'),
+('twitter', 'demo_037', 'Does the CSV export actually work for anyone else?', 'user_037', 'pro', 'neutral', 0.60, NOW() - INTERVAL '4 days'),
+('sheet', 'demo_038', 'When exporting, special characters in task names become gibberish in the CSV.', 'user_038', 'enterprise', 'negative', 0.88, NOW() - INTERVAL '5 days'),
+('reddit', 'demo_039', 'I need reliable CSV export for my reporting. Please fix.', 'user_039', 'pro', 'negative', 0.75, NOW() - INTERVAL '6 days'),
+('app_store', 'demo_040', 'CSV export crashes the browser for large projects (>1000 tasks).', 'user_040', 'enterprise', 'negative', 0.95, NOW() - INTERVAL '7 days'),
+('twitter', 'demo_041', 'Exported CSV cannot be imported into Excel properly without tweaking settings.', 'user_041', 'free', 'negative', 0.70, NOW() - INTERVAL '8 days'),
+('sheet', 'demo_042', 'The format of the CSV export changed with the last update, broke all my macros.', 'user_042', 'pro', 'negative', 0.92, NOW() - INTERVAL '9 days'),
+
+-- Theme E: Need Slack integration (8)
+('reddit', 'demo_043', 'Is there any way to get notifications in Slack?', 'user_043', 'enterprise', 'neutral', 0.30, NOW() - INTERVAL '10 days'),
+('twitter', 'demo_044', 'We really need a Slack integration so we don’t have to check the app constantly.', 'user_044', 'pro', 'negative', 0.65, NOW() - INTERVAL '2 days'),
+('app_store', 'demo_045', 'Please add Slack webhooks for task updates.', 'user_045', 'free', 'neutral', 0.20, NOW() - INTERVAL '3 days'),
+('sheet', 'demo_046', 'Lack of Slack integration is a dealbreaker for my team.', 'user_046', 'enterprise', 'negative', 0.85, NOW() - INTERVAL '4 days'),
+('reddit', 'demo_047', 'Can we get a slash command in Slack to create quick tasks?', 'user_047', 'pro', 'neutral', 0.40, NOW() - INTERVAL '5 days'),
+('twitter', 'demo_048', 'Would be great to sync comments between tasks and Slack threads.', 'user_048', 'enterprise', 'positive', 0.70, NOW() - INTERVAL '6 days'),
+('app_store', 'demo_049', 'Our whole team lives in Slack. We need updates pushed there.', 'user_049', 'pro', 'neutral', 0.50, NOW() - INTERVAL '7 days'),
+('sheet', 'demo_050', 'Any plans for a native Slack app integration?', 'user_050', 'free', 'neutral', 0.30, NOW() - INTERVAL '8 days');

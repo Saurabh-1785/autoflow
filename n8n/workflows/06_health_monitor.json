@@ -1,0 +1,10 @@
+{
+  "name": "AutoFlow - 06 Health Monitor",
+  "nodes": [
+    { "id": "1", "name": "Schedule Trigger", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1, "position": [0,0], "parameters": {} }
+  ],
+  "connections": {},
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": []
+}

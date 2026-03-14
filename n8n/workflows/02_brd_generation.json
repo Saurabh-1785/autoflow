@@ -1,0 +1,22 @@
+{
+  "name": "AutoFlow - 02 BRD Generation",
+  "nodes": [
+    { "id": "1", "name": "Webhook Trigger", "type": "n8n-nodes-base.webhook", "typeVersion": 1, "position": [0,0], "parameters": {"path": "generate-brds", "httpMethod": "POST"} },
+    { "id": "2", "name": "PostgreSQL", "type": "n8n-nodes-base.postgres", "typeVersion": 2.2, "position": [200,0], "parameters": {"operation": "executeQuery", "query": "SELECT * FROM feedback_clusters WHERE processed = false ORDER BY mention_count DESC"} },
+    { "id": "3", "name": "IF", "type": "n8n-nodes-base.if", "typeVersion": 1, "position": [400,0], "parameters": {"conditions": {"number": [{"value1": "={{$json.length}}", "operation": "larger", "value2": 0}]}} },
+    { "id": "4", "name": "NoOp", "type": "n8n-nodes-base.noOp", "typeVersion": 1, "position": [600,100], "parameters": {} },
+    { "id": "5", "name": "SplitInBatches", "type": "n8n-nodes-base.splitInBatches", "typeVersion": 1, "position": [600,-100], "parameters": {"batchSize": 1} },
+    { "id": "6", "name": "HTTP Request Gemini Analyst", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.1, "position": [800,-100], "parameters": {"method": "POST", "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={{$env.GEMINI_API_KEY}}"} },
+    { "id": "7", "name": "Code Node: Parse", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1000,-100], "parameters": {"jsCode": "return [{json: {}}];"} }
+  ],
+  "connections": {
+    "Webhook Trigger": {"main": [[{"node": "PostgreSQL", "type": "main", "index": 0}]]},
+    "PostgreSQL": {"main": [[{"node": "IF", "type": "main", "index": 0}]]},
+    "IF": {"main": [[{"node": "SplitInBatches", "type": "main", "index": 0}], [{"node": "NoOp", "type": "main", "index": 0}]]},
+    "SplitInBatches": {"main": [[{"node": "HTTP Request Gemini Analyst", "type": "main", "index": 0}]]},
+    "HTTP Request Gemini Analyst": {"main": [[{"node": "Code Node: Parse", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": []
+}

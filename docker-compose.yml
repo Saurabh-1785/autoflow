@@ -1,0 +1,67 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: autoflow
+      POSTGRES_USER: autoflow
+      POSTGRES_PASSWORD: autoflow_dev_secret
+    ports: ["5432:5432"]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./backend/src/db/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autoflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+  n8n:
+    image: n8nio/n8n:latest
+    ports: ["5678:5678"]
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n_db
+      - DB_POSTGRESDB_USER=autoflow
+      - DB_POSTGRESDB_PASSWORD=autoflow_dev_secret
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=autoflow2026
+      - WEBHOOK_URL=http://localhost:5678/
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    build: ./backend
+    ports: ["3001:3001"]
+    environment:
+      - DATABASE_URL=postgresql://autoflow:autoflow_dev_secret@postgres:5432/autoflow
+      - REDIS_URL=redis://redis:6379
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - SOLANA_RPC_URL=${SOLANA_RPC_URL}
+      - AGENT_PRIVATE_KEY=${AGENT_PRIVATE_KEY}
+      - PROGRAM_ID=${PROGRAM_ID}
+      - N8N_BASE_URL=http://n8n:5678
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - PINATA_JWT=${PINATA_JWT}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  n8n_data:

@@ -1,0 +1,10 @@
+{
+  "name": "AutoFlow - 03 Epic Generation",
+  "nodes": [
+    { "id": "1", "name": "Webhook Trigger", "type": "n8n-nodes-base.webhook", "typeVersion": 1, "position": [0,0], "parameters": {"path": "generate-epics", "httpMethod": "POST"} }
+  ],
+  "connections": {},
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": []
+}
