@@ -52,6 +52,13 @@ services:
       - REDIS_URL=redis://redis:6379
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - N8N_BASE_URL=http://n8n:5678
+      - N8N_USER=${N8N_USER:-admin}
+      - N8N_PASSWORD=${N8N_PASSWORD:-autoflow2026}
+      - PIPELINE_SOURCE=csv
+      - ALLOW_CSV_FALLBACK=false
+      - LOCAL_CSV_PATH=/app/data/google_sheets_demo_data.csv
+    volumes:
+      - ./google_sheets_demo_data.csv:/app/data/google_sheets_demo_data.csv:ro
     depends_on:
       postgres:
         condition: service_healthy

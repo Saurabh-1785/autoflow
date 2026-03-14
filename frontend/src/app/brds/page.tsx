@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { mockBrds } from "@/lib/mock-data";
+import { api } from "@/lib/api";
+import { hasPipelineRunInSession } from "@/lib/pipeline-session";
 import {
   formatStatus,
   getStatusColor,
@@ -19,7 +20,7 @@ import {
   Clock,
   Eye,
 } from "lucide-react";
-import type { BrdStatus } from "@/lib/types";
+import type { BrdStatus, Brd } from "@/lib/types";
 
 const statusFilters: ("all" | BrdStatus)[] = [
   "all",
@@ -32,13 +33,65 @@ const statusFilters: ("all" | BrdStatus)[] = [
 
 export default function BrdsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [brds, setBrds] = useState<Brd[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [pipelineReady, setPipelineReady] = useState(false);
 
-  const filtered = mockBrds.filter(
+  useEffect(() => {
+    const ready = hasPipelineRunInSession();
+    setPipelineReady(ready);
+
+    if (!ready) {
+      setBrds([]);
+      setLoading(false);
+      return;
+    }
+
+    async function fetchBrds() {
+      try {
+        const res = await api.getBrds();
+        if (res.brds) {
+          const mapped: Brd[] = res.brds.map((row: any) => ({
+            id: row.id,
+            clusterId: row.cluster_id,
+            title: row.title,
+            problemStatement: row.problem_statement,
+            targetAudience: row.target_audience,
+            businessValue: row.business_value,
+            proposedSolution: row.proposed_solution,
+            successMetrics: row.success_metrics || [],
+            outOfScope: row.out_of_scope || [],
+            sourceEvidence: row.source_evidence || [],
+            wsjf: row.wsjf || { businessValue: 0, timeCriticality: 0, riskReduction: 0, effort: 0 },
+            wsjfFinalScore: parseFloat(row.wsjf_final_score) || 0,
+            confidenceScore: parseFloat(row.confidence_score) || 0,
+            confidenceReason: row.confidence_reason,
+            criticScore: row.critic_score !== null ? parseFloat(row.critic_score) : null,
+            criticIssues: row.critic_issues || [],
+            status: row.status,
+            reviewerEmail: row.reviewer_email,
+            reviewedAt: row.reviewed_at,
+            blockchainTxHash: null,
+            ipfsCid: null,
+            createdAt: row.created_at,
+          }));
+          setBrds(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to fetch BRDs:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchBrds();
+  }, []);
+
+  const filtered = brds.filter(
     (brd) => statusFilter === "all" || brd.status === statusFilter
   );
 
-  const pendingCount = mockBrds.filter((b) => b.status === "pending_review").length;
-  const hitlCount = mockBrds.filter((b) => b.status === "hitl_queue").length;
+  const pendingCount = brds.filter((b) => b.status === "pending_review").length;
+  const hitlCount = brds.filter((b) => b.status === "hitl_queue").length;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
@@ -50,7 +103,7 @@ export default function BrdsPage() {
             BRD Review Queue
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            {pendingCount} pending review · {hitlCount} in HITL queue
+            {pipelineReady ? `${pendingCount} pending review · ${hitlCount} in HITL queue` : "Run pipeline from Dashboard to load BRDs"}
           </p>
         </div>
       </div>
@@ -79,7 +132,20 @@ export default function BrdsPage() {
 
       {/* BRD List */}
       <div className="space-y-3 stagger-children">
-        {filtered.map((brd) => (
+        {loading ? (
+          <div className="text-slate-500 text-sm py-8 text-center bg-white/5 rounded-lg border border-slate-200">
+            Loading BRDs from database...
+          </div>
+        ) : !pipelineReady ? (
+          <div className="text-slate-500 text-sm py-8 text-center bg-white/5 rounded-lg border border-slate-200">
+            Run the pipeline first from Dashboard. BRDs will appear after execution.
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-slate-500 text-sm py-8 text-center bg-white/5 rounded-lg border border-slate-200">
+            No BRDs found matching this status. Generate them via the Pipeline Dashboard.
+          </div>
+        ) : (
+          filtered.map((brd) => (
           <Link
             key={brd.id}
             href={`/brds/${brd.id}`}
@@ -136,7 +202,7 @@ export default function BrdsPage() {
               </div>
             </div>
           </Link>
-        ))}
+        )))}
       </div>
     </div>
   );

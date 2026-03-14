@@ -1,16 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { mockBrds } from "@/lib/mock-data";
+import { api } from "@/lib/api";
+import { hasPipelineRunInSession } from "@/lib/pipeline-session";
+import type { Brd } from "@/lib/types";
 import {
   formatStatus,
   getStatusColor,
   getConfidenceBg,
   getConfidenceColor,
   timeAgo,
-  truncateHash,
 } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -18,8 +19,6 @@ import {
   XCircle,
   Pencil,
   AlertTriangle,
-  ExternalLink,
-  Shield,
   ChevronDown,
   ChevronUp,
   Quote,
@@ -35,12 +34,112 @@ import {
 export default function BrdDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const brd = mockBrds.find((b) => b.id === params.id);
+  const id = params.id as string;
+  
+  const [brd, setBrd] = useState<Brd | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [pipelineReady, setPipelineReady] = useState(false);
+  
   const [showEvidence, setShowEvidence] = useState(false);
   const [showCritic, setShowCritic] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [priorityHint, setPriorityHint] = useState("medium");
   const [showRejectModal, setShowRejectModal] = useState(false);
+
+  useEffect(() => {
+    const ready = hasPipelineRunInSession();
+    setPipelineReady(ready);
+
+    if (!ready) {
+      setLoading(false);
+      return;
+    }
+
+    async function fetchBrd() {
+      try {
+        const res = await api.getBrd(id);
+        if (res.brd) {
+          const row = res.brd;
+          const mapped: Brd = {
+            id: row.id,
+            clusterId: row.cluster_id,
+            title: row.title,
+            problemStatement: row.problem_statement,
+            targetAudience: row.target_audience,
+            businessValue: row.business_value,
+            proposedSolution: row.proposed_solution,
+            successMetrics: row.success_metrics || [],
+            outOfScope: row.out_of_scope || [],
+            sourceEvidence: row.source_evidence || [],
+            wsjf: row.wsjf || { businessValue: 0, timeCriticality: 0, riskReduction: 0, effort: 0 },
+            wsjfFinalScore: parseFloat(row.wsjf_final_score) || 0,
+            confidenceScore: parseFloat(row.confidence_score) || 0,
+            confidenceReason: row.confidence_reason,
+            criticScore: row.critic_score !== null ? parseFloat(row.critic_score) : null,
+            criticIssues: row.critic_issues || [],
+            status: row.status,
+            reviewerEmail: row.reviewer_email,
+            reviewedAt: row.reviewed_at,
+            blockchainTxHash: null,
+            ipfsCid: null,
+            createdAt: row.created_at,
+          };
+          setBrd(mapped);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchBrd();
+  }, [id]);
+
+  if (!pipelineReady && !loading) {
+    return (
+      <div className="max-w-7xl mx-auto animate-fade-in">
+        <div className="glass-card p-12 text-center">
+          <p className="text-slate-500">Run pipeline first from Dashboard to access BRD details.</p>
+          <Link href="/dashboard" className="text-blue-400 text-sm mt-2 inline-block">
+            Go to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const handleApprove = async () => {
+    try {
+      await api.approveBrd(id);
+      alert("BRD Approved and sent to n8n pipeline!");
+      router.push('/brds');
+    } catch (err) {
+      console.error(err);
+      alert("Failed to approve BRD.");
+    }
+  };
+
+  const handleReject = async () => {
+    if (!rejectReason) return alert("Please provide a reason.");
+    try {
+      await api.rejectBrd(id, rejectReason);
+      alert("BRD Rejected.");
+      router.push('/brds');
+    } catch (err) {
+      console.error(err);
+      alert("Failed to reject BRD.");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto animate-fade-in">
+        <div className="glass-card p-12 text-center">
+          <p className="text-slate-500">Loading BRD details...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!brd) {
     return (
@@ -302,25 +401,6 @@ export default function BrdDetailPage() {
             </div>
           )}
 
-          {/* Blockchain Info */}
-          {brd.blockchainTxHash && (
-            <div className="glass-card p-4 flex items-center gap-3">
-              <Shield className="w-4 h-4 text-cyan-400" />
-              <span className="text-xs text-slate-500">Blockchain TX:</span>
-              <code className="text-xs text-cyan-400 font-mono">
-                {truncateHash(brd.blockchainTxHash, 12)}
-              </code>
-              <a
-                href={`https://mumbai.polygonscan.com/tx/${brd.blockchainTxHash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-blue-400 flex items-center gap-1 hover:underline ml-auto"
-              >
-                View on Polygonscan
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-          )}
         </div>
 
         {/* ========= RIGHT PANEL (40%) ========= */}
@@ -353,7 +433,7 @@ export default function BrdDetailPage() {
                 <button
                   className="btn-success w-full"
                   id="approve-brd-btn"
-                  onClick={() => alert("BRD Approved! (Demo)")}
+                  onClick={handleApprove}
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   Approve BRD
@@ -391,9 +471,7 @@ export default function BrdDetailPage() {
                     />
                     <button
                       className="btn-danger w-full mt-2 text-xs"
-                      onClick={() =>
-                        alert(`Rejected: ${rejectReason} (Demo)`)
-                      }
+                      onClick={handleReject}
                     >
                       Confirm Rejection
                     </button>

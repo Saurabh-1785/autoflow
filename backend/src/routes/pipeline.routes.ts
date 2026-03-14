@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { query } from '../db/client';
 import { triggerN8nWebhook } from '../services/pipeline.service';
+import { readLocalFeedbackRows } from '../services/localCsv.service';
+import { generateDemoArtifactsFromCsv } from '../services/demoPipeline.service';
 
 const router = Router();
 
@@ -24,8 +26,31 @@ router.post('/status/update', async (req, res, next) => {
 
 router.post('/trigger', async (req, res, next) => {
   try {
-    await triggerN8nWebhook('/webhook/start-ingestion', req.body);
-    res.json({ success: true, message: 'Pipeline triggered' });
+    const source = (req.body?.source || process.env.PIPELINE_SOURCE || 'google_sheets').toString();
+    const allowCsvFallback = process.env.ALLOW_CSV_FALLBACK === 'true';
+    const csvRows = source === 'csv' ? readLocalFeedbackRows() : null;
+
+    const payload = source === 'csv'
+      ? {
+          source: 'csv',
+          rows: csvRows,
+        }
+      : req.body;
+
+    try {
+      await triggerN8nWebhook('/webhook/start-ingestion', payload);
+      res.json({ success: true, message: 'Pipeline triggered' });
+    } catch (error) {
+      if (allowCsvFallback && source === 'csv' && csvRows) {
+        await generateDemoArtifactsFromCsv(csvRows);
+        return res.json({
+          success: true,
+          message: 'Pipeline executed in CSV demo mode (backend fallback).',
+        });
+      }
+
+      throw error;
+    }
   } catch (error) { next(error); }
 });
 

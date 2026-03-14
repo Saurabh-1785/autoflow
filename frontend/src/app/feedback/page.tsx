@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { mockFeedback } from "@/lib/mock-data";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import { hasPipelineRunInSession } from "@/lib/pipeline-session";
 import { timeAgo, getStatusColor, formatStatus } from "@/lib/utils";
 import {
   MessageSquareText,
@@ -43,11 +44,56 @@ function SentimentIcon({ sentiment }: { sentiment: string }) {
 }
 
 export default function FeedbackPage() {
+  const [feedback, setFeedback] = useState<RawFeedback[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [pipelineReady, setPipelineReady] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [sentimentFilter, setSentimentFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filtered = mockFeedback.filter((fb) => {
+  useEffect(() => {
+    const ready = hasPipelineRunInSession();
+    setPipelineReady(ready);
+
+    if (!ready) {
+      setFeedback([]);
+      setLoading(false);
+      return;
+    }
+
+    async function fetchFeedback() {
+      try {
+        const res = await api.getFeedback();
+        const allowedSources = new Set(["reddit", "app_store", "twitter", "google_play", "sheet"]);
+        const allowedSentiments = new Set(["positive", "negative", "neutral"]);
+        const allowedTiers = new Set(["free", "pro", "enterprise"]);
+
+        const mapped: RawFeedback[] = (res.feedback || []).map((row: any) => ({
+          id: row.id,
+          source: allowedSources.has(row.source) ? row.source : "sheet",
+          text: row.text || "",
+          authorId: row.author_id || "unknown_user",
+          authorTier: allowedTiers.has(row.author_tier) ? row.author_tier : "free",
+          sentiment: allowedSentiments.has(row.sentiment) ? row.sentiment : "neutral",
+          sentimentScore: Number(row.sentiment_score ?? 0),
+          isDuplicate: Boolean(row.is_duplicate),
+          clusterId: row.cluster_id || null,
+          createdAt: row.created_at,
+          collectedAt: row.collected_at,
+        }));
+
+        setFeedback(mapped);
+      } catch (error) {
+        console.error("Failed to load feedback:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchFeedback();
+  }, []);
+
+  const filtered = feedback.filter((fb) => {
     if (sourceFilter !== "all" && fb.source !== sourceFilter) return false;
     if (sentimentFilter !== "all" && fb.sentiment !== sentimentFilter) return false;
     if (searchQuery && !fb.text.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -65,7 +111,7 @@ export default function FeedbackPage() {
             Raw Feedback Inbox
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            {mockFeedback.length} items collected from all sources
+            {pipelineReady ? `${feedback.length} items collected from your pipeline` : "Run pipeline from Dashboard to load feedback"}
           </p>
         </div>
       </div>
@@ -135,10 +181,18 @@ export default function FeedbackPage() {
 
       {/* Feedback List */}
       <div className="space-y-2 stagger-children">
-        {filtered.map((fb) => (
+        {loading ? (
+          <div className="glass-card p-12 text-center">
+            <p className="text-slate-500 text-sm">Loading feedback from database...</p>
+          </div>
+        ) : !pipelineReady ? (
+          <div className="glass-card p-12 text-center">
+            <p className="text-slate-500 text-sm">Run the pipeline first from Dashboard. Feedback will appear after execution.</p>
+          </div>
+        ) : filtered.map((fb) => (
           <FeedbackCard key={fb.id} feedback={fb} />
         ))}
-        {filtered.length === 0 && (
+        {!loading && filtered.length === 0 && (
           <div className="glass-card p-12 text-center">
             <p className="text-slate-500 text-sm">No feedback matches your filters</p>
           </div>

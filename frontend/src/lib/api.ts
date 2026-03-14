@@ -22,6 +22,10 @@ export async function fetchApi<T>(endpoint: string, options?: RequestInit): Prom
 }
 
 export const api = {
+  // Feedback
+  getFeedback: () =>
+    fetchApi<any>('/feedback'),
+
   // BRDs
   getBrds: (status?: string) => 
     fetchApi<any>(`/brds${status ? `?status=${status}` : ''}`),

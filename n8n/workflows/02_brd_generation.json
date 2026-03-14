@@ -41,14 +41,14 @@
       "position": [750, 0],
       "parameters": {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={{$env.GEMINI_API_KEY}}",
+        "url": "={{$env.BACKEND_BASE_URL || 'http://localhost:3001'}}/api/agents/analyst",
         "sendBody": true,
         "contentType": "json",
         "bodyParameters": {
           "parameters": [
             {
-              "name": "contents",
-              "value": "=[{ \"parts\": [{ \"text\": \"You are a product management analyst. Generate a Business Requirement Document (BRD) in JSON format for this feature cluster: \" + $json.topic_label + \". Keywords: \" + $json.keywords.join(', ') }] }]"
+              "name": "feedback",
+              "value": "={{$json.topic_label}} feedbacks: {{$json.keywords.join(', ')}}"
             }
           ]
         }
@@ -61,7 +61,28 @@
       "typeVersion": 2,
       "position": [1000, 0],
       "parameters": {
-        "jsCode": "const response = $input.first().json.candidates[0].content.parts[0].text;\n// Extract JSON from markdown if exists\nconst jsonMatch = response.match(/\\{.*\\}/s);\nreturn [{ json: JSON.parse(jsonMatch ? jsonMatch[0] : response) }];"
+        "jsCode": "return [{ json: $input.first().json.data }];"
+      }
+    },
+    {
+      "id": "7",
+      "name": "Gemini Critic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1150, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BACKEND_BASE_URL || 'http://localhost:3001'}}/api/agents/critic",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "brd",
+              "value": "={{$node[\"Parse Gemini\"].json}}"
+            }
+          ]
+        }
       }
     },
     {
@@ -69,10 +90,25 @@
       "name": "Save BRD",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.2,
-      "position": [1250, 0],
+      "position": [1400, 0],
       "parameters": {
         "operation": "insert",
-        "table": "brds"
+        "table": "brds",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "cluster_id": "={{$node[\"Loop Clusters\"].json.id}}",
+            "title": "={{$node[\"Parse Gemini\"].json.title}}",
+            "problem_statement": "={{$node[\"Parse Gemini\"].json.problemStatement}}",
+            "target_audience": "={{$node[\"Parse Gemini\"].json.targetAudience}}",
+            "business_value": "={{$node[\"Parse Gemini\"].json.businessValue}}",
+            "proposed_solution": "={{$node[\"Parse Gemini\"].json.proposedSolution}}",
+            "critic_score": "={{$node[\"Gemini Critic\"].json.data.score}}",
+            "critic_issues": "={{JSON.stringify($node[\"Gemini Critic\"].json.data.feedback)}}",
+            "status": "pending_review",
+            "original_ai_json": "={{JSON.stringify($node[\"Parse Gemini\"].json)}}"
+          }
+        }
       }
     }
   ],
@@ -90,10 +126,13 @@
       "main": [[{ "node": "Parse Gemini", "type": "main", "index": 0 }]]
     },
     "Parse Gemini": {
+      "main": [[{ "node": "Gemini Critic", "type": "main", "index": 0 }]]
+    },
+    "Gemini Critic": {
       "main": [[{ "node": "Save BRD", "type": "main", "index": 0 }]]
     }
   },
-  "active": false,
+  "active": true,
   "settings": { "executionOrder": "v1" },
   "tags": []
 }

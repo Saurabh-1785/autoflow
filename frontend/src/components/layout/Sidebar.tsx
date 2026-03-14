@@ -8,7 +8,6 @@ import {
   FileText,
   ArrowUpDown,
   Blocks,
-  Shield,
   Settings,
   Zap,
 } from "lucide-react";
@@ -20,7 +19,6 @@ const navItems = [
   { href: "/brds", label: "BRD Review", icon: FileText },
   { href: "/priority", label: "Priority", icon: ArrowUpDown },
   { href: "/epics", label: "Epics", icon: Blocks },
-  { href: "/audit", label: "Audit Trail", icon: Shield },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

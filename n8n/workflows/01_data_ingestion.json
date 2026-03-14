@@ -3,32 +3,25 @@
   "nodes": [
     {
       "id": "1",
-      "name": "Schedule Trigger",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.1,
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
       "position": [0, 0],
       "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "hours",
-              "hoursInterval": 6
-            }
-          ]
-        }
+        "httpMethod": "POST",
+        "path": "start-ingestion",
+        "responseMode": "lastNode",
+        "options": {}
       }
     },
     {
       "id": "2",
-      "name": "Google Sheets",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4,
+      "name": "Rows From Webhook",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [250, 0],
       "parameters": {
-        "operation": "getAll",
-        "spreadsheetId": "={{$env.SHEET_ID}}",
-        "sheetName": "Feedback",
-        "options": {}
+        "jsCode": "const payload = $input.first().json || {};\nconst rows = Array.isArray(payload.rows) ? payload.rows : [];\n\nif (!rows.length) {\n  throw new Error('No rows were provided in webhook payload. In local CSV mode, backend must send { rows: [...] }.');\n}\n\nreturn rows.map((row) => ({ json: row }));"
       }
     },
     {
@@ -54,53 +47,30 @@
     },
     {
       "id": "5",
-      "name": "HTTP Cluster Request",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
+      "name": "Mark Ingestion Complete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [1000, 0],
       "parameters": {
-        "method": "POST",
-        "url": "http://nlp-service:8001/nlp/cluster",
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "batch_id",
-              "value": "={{$executionId}}"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "6",
-      "name": "Trigger BRD Gen",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [1250, 0],
-      "parameters": {
-        "method": "POST",
-        "url": "http://n8n:5678/webhook/generate-brds"
+        "jsCode": "return { json: { success: true, message: 'Data ingestion completed' } };"
       }
     }
   ],
   "connections": {
-    "Schedule Trigger": {
-      "main": [[{ "node": "Google Sheets", "type": "main", "index": 0 }]]
+    "Webhook Trigger": {
+      "main": [[{ "node": "Rows From Webhook", "type": "main", "index": 0 }]]
     },
-    "Google Sheets": {
+    "Rows From Webhook": {
       "main": [[{ "node": "Code Normalize", "type": "main", "index": 0 }]]
     },
     "Code Normalize": {
       "main": [[{ "node": "PostgreSQL Insert", "type": "main", "index": 0 }]]
     },
     "PostgreSQL Insert": {
-      "main": [[{ "node": "HTTP Cluster Request", "type": "main", "index": 0 }]]
-    },
-    "HTTP Cluster Request": {
-      "main": [[{ "node": "Trigger BRD Gen", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Mark Ingestion Complete", "type": "main", "index": 0 }]]
     }
   },
-  "active": false,
+  "active": true,
   "settings": { "executionOrder": "v1" },
   "tags": []
 }

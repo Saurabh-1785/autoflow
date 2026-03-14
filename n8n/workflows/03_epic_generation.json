@@ -20,16 +20,27 @@
       "position": [250, 0],
       "parameters": {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={{$env.GEMINI_API_KEY}}",
+        "url": "={{$env.BACKEND_BASE_URL || 'http://localhost:3001'}}/api/agents/story-writer",
         "sendBody": true,
+        "contentType": "json",
         "bodyParameters": {
           "parameters": [
             {
-              "name": "contents",
-              "value": "=[{ \"parts\": [{ \"text\": \"Generate user stories and epics in JSON for this BRD: \" + JSON.stringify($json.brd) }] }]"
+              "name": "brd",
+              "value": "={{$json}}"
             }
           ]
         }
+      }
+    },
+    {
+      "id": "4",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 0],
+      "parameters": {
+        "jsCode": "return $input.first().json.data.userStories.map(s => ({ json: s }));"
       }
     },
     {
@@ -52,7 +63,7 @@
       "main": [[{ "node": "Save Epics", "type": "main", "index": 0 }]]
     }
   },
-  "active": false,
+  "active": true,
   "settings": { "executionOrder": "v1" },
   "tags": []
 }

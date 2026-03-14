@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { mockEpics } from "@/lib/mock-data";
+import { api } from "@/lib/api";
+import { hasPipelineRunInSession } from "@/lib/pipeline-session";
+import type { Epic, UserStory } from "@/lib/types";
 import {
   ArrowLeft,
   Blocks,
@@ -10,17 +13,91 @@ import {
   CheckCircle2,
   AlertTriangle,
   Hash,
-  Shield,
-  ExternalLink,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { useState } from "react";
-import { getStatusColor, formatStatus, truncateHash, timeAgo } from "@/lib/utils";
+import { getStatusColor, formatStatus, timeAgo } from "@/lib/utils";
 
 export default function EpicDetailPage() {
   const params = useParams();
-  const epic = mockEpics.find((e) => e.id === params.id);
+  const id = params.id as string;
+  const [epic, setEpic] = useState<Epic | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [pipelineReady, setPipelineReady] = useState(false);
+
+  useEffect(() => {
+    const ready = hasPipelineRunInSession();
+    setPipelineReady(ready);
+
+    if (!ready) {
+      setLoading(false);
+      return;
+    }
+
+    async function fetchEpic() {
+      try {
+        const res = await api.getEpic(id);
+        if (res.epic) {
+          const row = res.epic;
+          const mapped: Epic = {
+            id: row.id,
+            brdId: row.brd_id,
+            epicRef: row.epic_ref,
+            title: row.title,
+            description: row.description,
+            totalPoints: parseInt(row.total_points) || 0,
+            status: row.status,
+            blockchainTxHash: null,
+            createdAt: row.created_at,
+            userStories: (res.user_stories || []).map((story: any) => ({
+              id: story.id,
+              epicId: story.epic_id,
+              storyRef: story.story_ref,
+              title: story.title,
+              storyText: story.story_text,
+              storyPoints: parseInt(story.story_points) || 0,
+              priority: story.priority,
+              needsClarification: story.needs_clarification,
+              acceptanceCriteria: story.acceptance_criteria || [],
+              definitionOfDone: story.definition_of_done || [],
+              status: story.status,
+              createdAt: story.created_at,
+            })),
+          };
+          setEpic(mapped);
+        }
+      } catch (error) {
+        console.error("Failed to load epic details:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchEpic();
+  }, [id]);
+
+  if (!pipelineReady && !loading) {
+    return (
+      <div className="max-w-7xl mx-auto animate-fade-in">
+        <div className="glass-card p-12 text-center">
+          <p className="text-slate-500">Run pipeline first from Dashboard to access epic details.</p>
+          <Link href="/dashboard" className="text-blue-400 text-sm mt-2 inline-block">
+            Go to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto animate-fade-in">
+        <div className="glass-card p-12 text-center">
+          <p className="text-slate-500">Loading epic details...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!epic) {
     return (
@@ -66,11 +143,7 @@ export default function EpicDetailPage() {
           <StatBlock label="User Stories" value={epic.userStories.length.toString()} icon={<BookOpen className="w-4 h-4 text-blue-400" />} />
           <StatBlock label="Total Points" value={epic.totalPoints.toString()} icon={<Hash className="w-4 h-4 text-purple-400" />} />
           <StatBlock label="Created" value={timeAgo(epic.createdAt)} icon={<Blocks className="w-4 h-4 text-cyan-400" />} />
-          <StatBlock
-            label="Blockchain"
-            value={epic.blockchainTxHash ? "On-chain ✓" : "Pending"}
-            icon={<Shield className="w-4 h-4 text-emerald-400" />}
-          />
+          <StatBlock label="Status" value={formatStatus(epic.status)} icon={<CheckCircle2 className="w-4 h-4 text-emerald-400" />} />
         </div>
       </div>
 
@@ -81,25 +154,6 @@ export default function EpicDetailPage() {
         ))}
       </div>
 
-      {/* Blockchain Info */}
-      {epic.blockchainTxHash && (
-        <div className="glass-card p-4 flex items-center gap-3">
-          <Shield className="w-4 h-4 text-cyan-400" />
-          <span className="text-xs text-slate-500">Blockchain TX:</span>
-          <code className="text-xs text-cyan-400 font-mono">
-            {truncateHash(epic.blockchainTxHash, 12)}
-          </code>
-          <a
-            href={`https://mumbai.polygonscan.com/tx/${epic.blockchainTxHash}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-blue-400 flex items-center gap-1 hover:underline ml-auto"
-          >
-            View on Polygonscan
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
-      )}
     </div>
   );
 }
@@ -127,7 +181,7 @@ function StatBlock({
 function UserStoryCard({
   story,
 }: {
-  story: (typeof mockEpics)[0]["userStories"][0];
+  story: UserStory;
 }) {
   const [expanded, setExpanded] = useState(false);
 
