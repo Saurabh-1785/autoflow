@@ -1,37 +1,104 @@
 {
   "name": "AutoFlow - 01 Data Ingestion",
   "nodes": [
-    { "id": "1", "name": "Schedule Trigger", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1, "position": [0,0], "parameters": {} },
-    { "id": "2", "name": "HTTP Request Reddit", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.1, "position": [200,-100], "parameters": {"url": "https://oauth.reddit.com/r/projectmanagement/new.json"} },
-    { "id": "3", "name": "HTTP Request App Store", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.1, "position": [200,0], "parameters": {"url": "https://itunes.apple.com/us/rss/customerreviews/id=DEMO_APP_ID/json"} },
-    { "id": "4", "name": "HTTP Request Sheets", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.1, "position": [200,100], "parameters": {"url": "https://sheets.googleapis.com/v4/spreadsheets/{{$env.SHEET_ID}}/values/A:E"} },
-    { "id": "5", "name": "Merge", "type": "n8n-nodes-base.merge", "typeVersion": 2.1, "position": [400,0], "parameters": {"mode": "append"} },
-    { "id": "6", "name": "Code Node: Normalize", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [600,0], "parameters": {"jsCode": "const items = []; return items;"} },
-    { "id": "7", "name": "HTTP Request Deduplicate", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.1, "position": [800,0], "parameters": {"method": "POST", "url": "http://backend:3001/api/nlp-proxy/deduplicate"} },
-    { "id": "8", "name": "Code Node: Filter", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1000,0], "parameters": {"jsCode": "return $input.all();"} },
-    { "id": "9", "name": "PostgreSQL Insert", "type": "n8n-nodes-base.postgres", "typeVersion": 2.2, "position": [1200,0], "parameters": {"operation": "insert", "table": "raw_feedback"} },
-    { "id": "10", "name": "HTTP Request Status", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.1, "position": [1400,0], "parameters": {"method": "POST", "url": "http://backend:3001/api/pipeline/status/update"} },
-    { "id": "11", "name": "HTTP Request Cluster", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.1, "position": [1600,0], "parameters": {"method": "POST", "url": "http://nlp-service:8001/nlp/cluster"} },
-    { "id": "12", "name": "PostgreSQL Insert Cluster", "type": "n8n-nodes-base.postgres", "typeVersion": 2.2, "position": [1800,0], "parameters": {"operation": "insert", "table": "feedback_clusters"} },
-    { "id": "13", "name": "Slack Notification", "type": "n8n-nodes-base.slack", "typeVersion": 2.1, "position": [2000,0], "parameters": {"text": "✅ Ingestion complete", "channel": "#autoflow-ops"} },
-    { "id": "14", "name": "Trigger Workflow 2", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.1, "position": [2200,0], "parameters": {"method": "POST", "url": "http://n8n:5678/webhook/generate-brds"} }
+    {
+      "id": "1",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2",
+      "name": "Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [250, 0],
+      "parameters": {
+        "operation": "getAll",
+        "spreadsheetId": "={{$env.SHEET_ID}}",
+        "sheetName": "Feedback",
+        "options": {}
+      }
+    },
+    {
+      "id": "3",
+      "name": "Code Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 0],
+      "parameters": {
+        "jsCode": "return $input.all().map(item => ({\n  json: {\n    source: 'sheet',\n    external_id: item.json['ID'] || item.json['id'],\n    text: item.json['Feedback'] || item.json['text'],\n    author_id: item.json['User'] || 'anonymous',\n    author_tier: item.json['Tier'] || 'free',\n    collected_at: new Date().toISOString()\n  }\n}));"
+      }
+    },
+    {
+      "id": "4",
+      "name": "PostgreSQL Insert",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [750, 0],
+      "parameters": {
+        "operation": "insert",
+        "table": "raw_feedback"
+      }
+    },
+    {
+      "id": "5",
+      "name": "HTTP Cluster Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1000, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "http://nlp-service:8001/nlp/cluster",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "batch_id",
+              "value": "={{$executionId}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "6",
+      "name": "Trigger BRD Gen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "http://n8n:5678/webhook/generate-brds"
+      }
+    }
   ],
   "connections": {
     "Schedule Trigger": {
-      "main": [[{"node": "HTTP Request Reddit", "type": "main", "index": 0}, {"node": "HTTP Request App Store", "type": "main", "index": 0}, {"node": "HTTP Request Sheets", "type": "main", "index": 0}]]
+      "main": [[{ "node": "Google Sheets", "type": "main", "index": 0 }]]
     },
-    "HTTP Request Reddit": {"main": [[{"node": "Merge", "type": "main", "index": 0}]]},
-    "HTTP Request App Store": {"main": [[{"node": "Merge", "type": "main", "index": 1}]]},
-    "HTTP Request Sheets": {"main": [[{"node": "Merge", "type": "main", "index": 2}]]},
-    "Merge": {"main": [[{"node": "Code Node: Normalize", "type": "main", "index": 0}]]},
-    "Code Node: Normalize": {"main": [[{"node": "HTTP Request Deduplicate", "type": "main", "index": 0}]]},
-    "HTTP Request Deduplicate": {"main": [[{"node": "Code Node: Filter", "type": "main", "index": 0}]]},
-    "Code Node: Filter": {"main": [[{"node": "PostgreSQL Insert", "type": "main", "index": 0}]]},
-    "PostgreSQL Insert": {"main": [[{"node": "HTTP Request Status", "type": "main", "index": 0}]]},
-    "HTTP Request Status": {"main": [[{"node": "HTTP Request Cluster", "type": "main", "index": 0}]]},
-    "HTTP Request Cluster": {"main": [[{"node": "PostgreSQL Insert Cluster", "type": "main", "index": 0}]]},
-    "PostgreSQL Insert Cluster": {"main": [[{"node": "Slack Notification", "type": "main", "index": 0}]]},
-    "Slack Notification": {"main": [[{"node": "Trigger Workflow 2", "type": "main", "index": 0}]]}
+    "Google Sheets": {
+      "main": [[{ "node": "Code Normalize", "type": "main", "index": 0 }]]
+    },
+    "Code Normalize": {
+      "main": [[{ "node": "PostgreSQL Insert", "type": "main", "index": 0 }]]
+    },
+    "PostgreSQL Insert": {
+      "main": [[{ "node": "HTTP Cluster Request", "type": "main", "index": 0 }]]
+    },
+    "HTTP Cluster Request": {
+      "main": [[{ "node": "Trigger BRD Gen", "type": "main", "index": 0 }]]
+    }
   },
   "active": false,
   "settings": { "executionOrder": "v1" },

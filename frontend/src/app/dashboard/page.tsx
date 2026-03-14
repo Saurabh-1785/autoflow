@@ -62,6 +62,7 @@ const SOURCE_OPTIONS = [
   { id: "g2", name: "G2 Reviews", desc: "Enterprise reviews" },
   { id: "trustpilot", name: "Trustpilot", desc: "Consumer reviews" },
   { id: "zendesk", name: "Zendesk", desc: "Support tickets" },
+  { id: "Demo", name: "Demo", desc: "Demo data" },
 ];
 
 const SOURCE_BREAKDOWN = [

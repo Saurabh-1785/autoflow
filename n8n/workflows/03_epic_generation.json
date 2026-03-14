@@ -1,9 +1,57 @@
 {
   "name": "AutoFlow - 03 Epic Generation",
   "nodes": [
-    { "id": "1", "name": "Webhook Trigger", "type": "n8n-nodes-base.webhook", "typeVersion": 1, "position": [0,0], "parameters": {"path": "generate-epics", "httpMethod": "POST"} }
+    {
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [0, 0],
+      "parameters": {
+        "path": "generate-epics",
+        "httpMethod": "POST"
+      }
+    },
+    {
+      "id": "2",
+      "name": "Gemini Epics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [250, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={{$env.GEMINI_API_KEY}}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "contents",
+              "value": "=[{ \"parts\": [{ \"text\": \"Generate user stories and epics in JSON for this BRD: \" + JSON.stringify($json.brd) }] }]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "3",
+      "name": "Save Epics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [500, 0],
+      "parameters": {
+        "operation": "insert",
+        "table": "epics"
+      }
+    }
   ],
-  "connections": {},
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Gemini Epics", "type": "main", "index": 0 }]]
+    },
+    "Gemini Epics": {
+      "main": [[{ "node": "Save Epics", "type": "main", "index": 0 }]]
+    }
+  },
   "active": false,
   "settings": { "executionOrder": "v1" },
   "tags": []

@@ -1,0 +1,51 @@
+ID,Feedback,User,Tier
+fb_001,"The dashboard takes over 5 seconds to load when I have more than 10 projects. This is really slowing me down.",user_alpha_1,enterprise
+fb_002,"Please add a dark mode! My eyes are burning during late-night planning sessions.",user_beta_2,pro
+fb_003,"The CSV export feature is broken. It stays stuck on 0% forever. I need this for my weekly reports.",user_gamma_3,free
+fb_004,"I really wish there was a mobile app for iOS. Being able to check task status on the go would be amazing.",user_delta_4,pro
+fb_005,"Loving the new UI, but the sidebar is a bit too wide. Can we make it collapsable?",user_epsilon_5,enterprise
+fb_006,"Is there a way to integrate with Slack? We want to get notifications when a task is completed.",user_zeta_6,pro
+fb_007,"Search is very slow. It takes almost 10 seconds to find a task by name.",user_eta_7,enterprise
+fb_008,"Still waiting for a dark mode option. It's 2026, every app should have this.",user_theta_8,free
+fb_009,"The mobile web view is completely unusable. Please build a native app!",user_iota_9,pro
+fb_010,"CSV exports are missing the 'Assigned To' column. Help!",user_kappa_10,enterprise
+fb_011,"The app crashes every time I try to upload a file larger than 10MB.",user_lambda_11,pro
+fb_012,"I need a way to filter projects by department. The current list is too long.",user_mu_12,enterprise
+fb_013,"Can we get more color coding options for task labels?",user_nu_13,free
+fb_014,"The notifications are too noisy. I want to be able to mute specific projects.",user_xi_14,pro
+fb_015,"Dashboard performance is a major issue for our team. It's becoming a dealbreaker.",user_omicron_15,enterprise
+fb_016,"Dark mode when? My eyes are tired.",user_pi_16,pro
+fb_017,"The 'Forgot Password' link doesn't send an email half the time.",user_rho_17,free
+fb_018,"It would be great to have an iPad optimized version of the app.",user_sigma_18,pro
+fb_019,"Column headers in the CSV export are garbled. Character encoding issue?",user_tau_19,enterprise
+fb_020,"Slack integration is a must-have for us. Any timeline on this?",user_upsilon_20,pro
+fb_021,"The Gantt chart view is very laggy on Firefox.",user_phi_21,enterprise
+fb_022,"Give us a dark theme please. Simple as that.",user_chi_22,free
+fb_023,"Offline mode for the mobile app would be a game changer.",user_psi_23,pro
+fb_024,"Can't export data for the last quarter. The system times out.",user_omega_24,enterprise
+fb_025,"File attachments are not loading in the comments section.",user_alpha_25,pro
+fb_026,"The 'Assigned to' dropdown is disorganized. Hard to find team members.",user_beta_26,enterprise
+fb_027,"I love the app but it's too bright at night. Need dark mode.",user_gamma_27,free
+fb_028,"Push notifications on Android are delayed by several minutes.",user_delta_28,pro
+fb_029,"The export to Excel feature always includes deleted tasks.",user_epsilon_29,enterprise
+fb_030,"Integration with Google Calendar would be very helpful.",user_zeta_30,pro
+fb_031,"Page transitions are taking way too long. Needs optimization.",user_eta_31,enterprise
+fb_032,"Dark mode or riot! My retinas are crying.",user_theta_32,free
+fb_033,"When will the native mobile app be released? The browser version is slow.",user_iota_33,pro
+fb_034,"CSV export limits the number of rows to 1000. That's not enough for us.",user_kappa_34,enterprise
+fb_035,"Changing a task status sometimes doesn't save correctly.",user_lambda_35,pro
+fb_036,"The search bar doesn't support partial matches. VERY annoying.",user_mu_36,enterprise
+fb_037,"Can we customize the dashboard widgets?",user_nu_37,free
+fb_038,"Please fix the Slack bot. It's not posting updates to our #dev channel.",user_xi_38,pro
+fb_039,"The initial load of the app takes over 15 seconds. Unacceptable.",user_omicron_39,enterprise
+fb_040,"Everything is great, just needs dark mode.",user_pi_40,pro
+fb_041,"I can't delete my own comments. Is this a bug?",user_rho_41,free
+fb_042,"The mobile experience is just 'okay'. Needs to be better for pro users.",user_sigma_42,pro
+fb_043,"Exporting reports takes way too long. We need them to be instant.",user_tau_43,enterprise
+fb_044,"Major performance lag in the 'Task Details' view.",user_upsilon_44,pro
+fb_045,"Can we get a Discord integration instead of Slack?",user_phi_45,enterprise
+fb_046,"The font is too small and hard to read on large monitors.",user_chi_46,free
+fb_047,"Native mobile app is Priority #1 for us.",user_psi_47,pro
+fb_048,"CSV export fails if there are emojis in the task description.",user_omega_48,enterprise
+fb_049,"Drag and drop in the Kanban board is very buggy on touch screens.",user_alpha_49,pro
+fb_050,"Optimization for the dashboard is desperately needed. It's too slow.",user_beta_50,enterprise

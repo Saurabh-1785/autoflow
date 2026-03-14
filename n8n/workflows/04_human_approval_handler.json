@@ -1,9 +1,34 @@
 {
   "name": "AutoFlow - 04 Human Approval Handler",
   "nodes": [
-    { "id": "1", "name": "Webhook Trigger", "type": "n8n-nodes-base.webhook", "typeVersion": 1, "position": [0,0], "parameters": {"path": "brd-decision", "httpMethod": "POST"} }
+    {
+      "id": "1",
+      "name": "Webhook Decision",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [0, 0],
+      "parameters": {
+        "path": "brd-decision",
+        "httpMethod": "POST"
+      }
+    },
+    {
+      "id": "2",
+      "name": "Update Status",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [250, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE brds SET status = '{{$json.decision}}' WHERE id = '{{$json.brdId}}'"
+      }
+    }
   ],
-  "connections": {},
+  "connections": {
+    "Webhook Decision": {
+      "main": [[{ "node": "Update Status", "type": "main", "index": 0 }]]
+    }
+  },
   "active": false,
   "settings": { "executionOrder": "v1" },
   "tags": []

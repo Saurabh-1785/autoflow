@@ -1,20 +1,97 @@
 {
   "name": "AutoFlow - 02 BRD Generation",
   "nodes": [
-    { "id": "1", "name": "Webhook Trigger", "type": "n8n-nodes-base.webhook", "typeVersion": 1, "position": [0,0], "parameters": {"path": "generate-brds", "httpMethod": "POST"} },
-    { "id": "2", "name": "PostgreSQL", "type": "n8n-nodes-base.postgres", "typeVersion": 2.2, "position": [200,0], "parameters": {"operation": "executeQuery", "query": "SELECT * FROM feedback_clusters WHERE processed = false ORDER BY mention_count DESC"} },
-    { "id": "3", "name": "IF", "type": "n8n-nodes-base.if", "typeVersion": 1, "position": [400,0], "parameters": {"conditions": {"number": [{"value1": "={{$json.length}}", "operation": "larger", "value2": 0}]}} },
-    { "id": "4", "name": "NoOp", "type": "n8n-nodes-base.noOp", "typeVersion": 1, "position": [600,100], "parameters": {} },
-    { "id": "5", "name": "SplitInBatches", "type": "n8n-nodes-base.splitInBatches", "typeVersion": 1, "position": [600,-100], "parameters": {"batchSize": 1} },
-    { "id": "6", "name": "HTTP Request Gemini Analyst", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.1, "position": [800,-100], "parameters": {"method": "POST", "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={{$env.GEMINI_API_KEY}}"} },
-    { "id": "7", "name": "Code Node: Parse", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1000,-100], "parameters": {"jsCode": "return [{json: {}}];"} }
+    {
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [0, 0],
+      "parameters": {
+        "path": "generate-brds",
+        "httpMethod": "POST"
+      }
+    },
+    {
+      "id": "2",
+      "name": "Get Clusters",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [250, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM feedback_clusters WHERE processed = false"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Loop Clusters",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [500, 0],
+      "parameters": {
+        "batchSize": 1
+      }
+    },
+    {
+      "id": "4",
+      "name": "Gemini Analyst",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [750, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={{$env.GEMINI_API_KEY}}",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "contents",
+              "value": "=[{ \"parts\": [{ \"text\": \"You are a product management analyst. Generate a Business Requirement Document (BRD) in JSON format for this feature cluster: \" + $json.topic_label + \". Keywords: \" + $json.keywords.join(', ') }] }]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "5",
+      "name": "Parse Gemini",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 0],
+      "parameters": {
+        "jsCode": "const response = $input.first().json.candidates[0].content.parts[0].text;\n// Extract JSON from markdown if exists\nconst jsonMatch = response.match(/\\{.*\\}/s);\nreturn [{ json: JSON.parse(jsonMatch ? jsonMatch[0] : response) }];"
+      }
+    },
+    {
+      "id": "6",
+      "name": "Save BRD",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [1250, 0],
+      "parameters": {
+        "operation": "insert",
+        "table": "brds"
+      }
+    }
   ],
   "connections": {
-    "Webhook Trigger": {"main": [[{"node": "PostgreSQL", "type": "main", "index": 0}]]},
-    "PostgreSQL": {"main": [[{"node": "IF", "type": "main", "index": 0}]]},
-    "IF": {"main": [[{"node": "SplitInBatches", "type": "main", "index": 0}], [{"node": "NoOp", "type": "main", "index": 0}]]},
-    "SplitInBatches": {"main": [[{"node": "HTTP Request Gemini Analyst", "type": "main", "index": 0}]]},
-    "HTTP Request Gemini Analyst": {"main": [[{"node": "Code Node: Parse", "type": "main", "index": 0}]]}
+    "Webhook Trigger": {
+      "main": [[{ "node": "Get Clusters", "type": "main", "index": 0 }]]
+    },
+    "Get Clusters": {
+      "main": [[{ "node": "Loop Clusters", "type": "main", "index": 0 }]]
+    },
+    "Loop Clusters": {
+      "main": [[{ "node": "Gemini Analyst", "type": "main", "index": 0 }]]
+    },
+    "Gemini Analyst": {
+      "main": [[{ "node": "Parse Gemini", "type": "main", "index": 0 }]]
+    },
+    "Parse Gemini": {
+      "main": [[{ "node": "Save BRD", "type": "main", "index": 0 }]]
+    }
   },
   "active": false,
   "settings": { "executionOrder": "v1" },

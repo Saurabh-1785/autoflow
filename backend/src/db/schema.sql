@@ -1,11 +1,11 @@
 -- raw_feedback: stores every scraped review/tweet/post
 CREATE TABLE raw_feedback (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    source VARCHAR(50) NOT NULL,          -- 'reddit','app_store','twitter','sheet'
+    source VARCHAR(50) NOT NULL,
     external_id VARCHAR(255),
     text TEXT NOT NULL,
     author_id VARCHAR(255),
-    author_tier VARCHAR(50) DEFAULT 'free', -- 'free','pro','enterprise'
+    author_tier VARCHAR(50) DEFAULT 'free',
     sentiment VARCHAR(20),
     sentiment_score FLOAT,
     is_duplicate BOOLEAN DEFAULT false,
@@ -50,8 +50,6 @@ CREATE TABLE brds (
     reviewer_email VARCHAR(255),
     reviewed_at TIMESTAMPTZ,
     original_ai_json JSONB,
-    blockchain_tx_hash VARCHAR(255),
-    ipfs_cid VARCHAR(255),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -64,7 +62,6 @@ CREATE TABLE epics (
     description TEXT,
     total_points INT,
     status VARCHAR(50) DEFAULT 'draft',
-    blockchain_tx_hash VARCHAR(255),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -81,18 +78,6 @@ CREATE TABLE user_stories (
     acceptance_criteria TEXT[],
     definition_of_done TEXT[],
     status VARCHAR(50) DEFAULT 'draft',
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- audit_log: mirror of on-chain records for fast UI querying
-CREATE TABLE audit_log (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    record_id VARCHAR(255) UNIQUE,
-    event_type VARCHAR(100),
-    content_hash VARCHAR(255),
-    ipfs_cid VARCHAR(255),
-    tx_hash VARCHAR(255),
-    actor VARCHAR(255),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -113,4 +98,3 @@ CREATE INDEX idx_raw_feedback_cluster ON raw_feedback(cluster_id);
 CREATE INDEX idx_brds_status ON brds(status);
 CREATE INDEX idx_brds_wsjf ON brds(wsjf_final_score DESC NULLS LAST);
 CREATE INDEX idx_epics_brd ON epics(brd_id);
-CREATE INDEX idx_audit_event ON audit_log(event_type, created_at DESC);
