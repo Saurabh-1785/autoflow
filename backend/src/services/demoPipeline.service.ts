@@ -52,6 +52,36 @@ function buildFallbackBrd(topicLabel: string, feedbackTexts: string[]) {
   };
 }
 
+function buildFallbackStories(brd: any) {
+  const epicTitle = `Epic: ${brd.title.replace('BRD: ', '')}`;
+  return {
+    epics: [
+      {
+        title: epicTitle,
+        description: `Implement the key capabilities defined in ${brd.title}, focusing on the core problem: ${brd.problemStatement.slice(0, 100)}...`,
+        acceptanceCriteria: ["Core functionality validated", "User feedback integrated", "Performance targets met"],
+        businessValue: brd.businessValue
+      }
+    ],
+    userStories: [
+      {
+        epicTitle: epicTitle,
+        title: `As a user, I want stable functionality for ${brd.title.replace('BRD: ', '')}, so that I can achieve my goals efficiently.`,
+        description: `Detailed implementation of requirements: ${brd.requirements?.join(', ')}`,
+        acceptanceCriteria: ["Feature is functional", "Errors are handled gracefully"],
+        storyPoints: 5
+      },
+      {
+        epicTitle: epicTitle,
+        title: `As a user, I want improved UI/UX for this feature group, so that I have a better visual experience.`,
+        description: `Address UI polish and responsiveness for ${brd.title}`,
+        acceptanceCriteria: ["UI follows design guidelines", "Responsive on mobile"],
+        storyPoints: 3
+      }
+    ]
+  };
+}
+
 // ── main pipeline ────────────────────────────────────────
 
 export async function generateDemoArtifactsFromCsv(rows: CsvFeedbackRow[]) {
@@ -60,26 +90,34 @@ export async function generateDemoArtifactsFromCsv(rows: CsvFeedbackRow[]) {
   // ─── Stage 1: Data Ingestion ───────────────────────────
   await logStage('Data Ingestion: Loading feedback into database', 'completed');
 
+  const processedFeedback: { id: string; text: string }[] = [];
+
   for (const row of rows) {
-    await query(
+    const feedbackText = row.Feedback || '';
+    const insertRes = await query(
       `INSERT INTO raw_feedback (source, external_id, text, author_id, author_tier, sentiment, sentiment_score, is_duplicate, collected_at)
-       VALUES ('sheet', $1, $2, $3, $4, 'neutral', 0.5, false, NOW())`,
-      [row.ID || null, row.Feedback || '', row.User || 'anonymous', row.Tier || 'free']
+       VALUES ('sheet', $1, $2, $3, $4, 'neutral', 0.5, false, NOW()) RETURNING id`,
+      [row.ID || null, feedbackText, row.User || 'anonymous', row.Tier || 'free']
     );
+    
+    if (insertRes.rows.length > 0) {
+      processedFeedback.push({
+        id: insertRes.rows[0].id,
+        text: feedbackText
+      });
+    }
   }
 
-  await logStage(`Data Ingestion: Normalized and stored ${rows.length} feedback items`, 'completed', rows.length);
-  console.log(`[DemoPipeline] Ingested ${rows.length} feedback items`);
+  await logStage(`Data Ingestion: Normalized and stored ${processedFeedback.length} feedback items`, 'completed', processedFeedback.length);
+  console.log(`[DemoPipeline] Ingested ${processedFeedback.length} feedback items`);
 
   // ─── Stage 2: Clustering via Cluster Agent ─────────────
   await logStage('Cluster Agent: Analyzing feedback for topic patterns...', 'completed');
 
-  const { rows: feedbackRows } = await query('SELECT id, text FROM raw_feedback WHERE cluster_id IS NULL');
-  const feedbackItems = feedbackRows.map((r: any) => ({ id: r.id, text: r.text }));
-
   let clusters: any[] = [];
   try {
-    const clusterResult = await runClusterAgent(feedbackItems);
+    // Pass processedFeedback directly instead of querying the DB
+    const clusterResult = await runClusterAgent(processedFeedback);
     clusters = clusterResult.clusters || [];
     console.log(`[DemoPipeline] Cluster Agent produced ${clusters.length} clusters`);
   } catch (err: any) {
@@ -89,7 +127,7 @@ export async function generateDemoArtifactsFromCsv(rows: CsvFeedbackRow[]) {
       topicLabel: 'General Feedback',
       keywords: ['feedback', 'issues', 'requests'],
       summary: 'All user feedback items grouped together',
-      rawFeedbackIds: feedbackItems.map(i => i.id)
+      rawFeedbackIds: processedFeedback.map(i => i.id)
     }];
   }
 
@@ -113,15 +151,15 @@ export async function generateDemoArtifactsFromCsv(rows: CsvFeedbackRow[]) {
       );
     }
 
-    // Gather feedback texts for this cluster
-    const textsRes = ids.length > 0
-      ? await query(`SELECT text FROM raw_feedback WHERE id = ANY($1::uuid[])`, [ids])
-      : { rows: [] };
+    // Gather feedback texts from memory instead of re-querying
+    const fbTexts = processedFeedback
+      .filter(fb => ids.includes(fb.id))
+      .map(fb => fb.text);
 
     savedClusters.push({
       clusterId,
       topicLabel: cluster.topicLabel,
-      feedbackTexts: textsRes.rows.map((r: any) => r.text)
+      feedbackTexts: fbTexts
     });
   }
 
@@ -138,12 +176,13 @@ export async function generateDemoArtifactsFromCsv(rows: CsvFeedbackRow[]) {
       : `Topic: ${cluster.topicLabel}`;
 
     try {
+      console.log(`[DemoPipeline] Cluster "${cluster.topicLabel}" - Input to Analyst Agent:`, feedbackForAnalyst);
       const brdResult = await withTimeout(
         runAnalystAgent(feedbackForAnalyst),
         45000,
         `Analyst Agent timed out after 45s for cluster "${cluster.topicLabel}"`
       );
-      console.log(`[DemoPipeline] Analyst Agent generated BRD: ${brdResult.title}`);
+      console.log(`[DemoPipeline] Analyst Agent Result for "${cluster.topicLabel}":`, JSON.stringify(brdResult, null, 2));
 
       const brdInsert = await query(
         `INSERT INTO brds (
@@ -278,28 +317,19 @@ export async function generateDemoArtifactsFromCsv(rows: CsvFeedbackRow[]) {
   // ─── Stage 5: Story Writer Agent → Epics & User Stories ─
   await logStage('Story Writer Agent: Generating epics and user stories...', 'completed');
 
-  const { rows: approvedBrds } = await query(
-    `SELECT id, title, problem_statement, proposed_solution, business_value, target_audience, success_metrics
-     FROM brds WHERE status = 'approved' ORDER BY created_at ASC`
-  );
-
   let totalEpics = 0;
   let totalStories = 0;
 
-  for (const brdRow of approvedBrds) {
+  for (const brd of generatedBrds) {
     try {
+      console.log(`[DemoPipeline] BRD "${brd.brdData.title}" - Input to Story Writer Agent:`, JSON.stringify(brd.brdData, null, 2));
+      // Use the local brdData instead of re-querying the DB
       const storyResult = await withTimeout(
-        runStoryWriterAgent({
-          title: brdRow.title,
-          problemStatement: brdRow.problem_statement,
-          proposedSolution: brdRow.proposed_solution,
-          businessValue: brdRow.business_value,
-          targetAudience: brdRow.target_audience,
-          successMetrics: brdRow.success_metrics
-        }),
+        runStoryWriterAgent(brd.brdData),
         45000,
-        `Story Writer Agent timed out after 45s for BRD "${brdRow.title}"`
+        `Story Writer Agent timed out after 45s for BRD "${brd.brdData.title}"`
       );
+      console.log(`[DemoPipeline] Story Writer Agent Result for "${brd.brdData.title}":`, JSON.stringify(storyResult, null, 2));
 
       const epics = storyResult.epics || [];
       const stories = storyResult.userStories || [];
@@ -314,7 +344,7 @@ export async function generateDemoArtifactsFromCsv(rows: CsvFeedbackRow[]) {
         const epicInsert = await query(
           `INSERT INTO epics (brd_id, epic_ref, title, description, total_points, status)
            VALUES ($1, $2, $3, $4, $5, 'draft') RETURNING id`,
-          [brdRow.id, epicRef, epic.title, epic.description, epicPoints]
+          [brd.brdId, epicRef, epic.title, epic.description, epicPoints]
         );
         const epicId = epicInsert.rows[0].id;
 
@@ -342,14 +372,42 @@ export async function generateDemoArtifactsFromCsv(rows: CsvFeedbackRow[]) {
       totalEpics += epics.length;
 
       await logStage(
-        `Story Writer Agent generated ${epics.length} epics for BRD: ${brdRow.title}`,
+        `Story Writer Agent generated ${epics.length} epics for BRD: ${brd.brdData.title}`,
         'completed'
       );
-      console.log(`[DemoPipeline] Story Writer generated ${epics.length} epics, ${stories.length} stories for "${brdRow.title}"`);
+      console.log(`[DemoPipeline] Story Writer generated ${epics.length} epics, ${stories.length} stories for "${brd.brdData.title}"`);
 
     } catch (err: any) {
-      console.error(`[DemoPipeline] Story Writer error for BRD ${brdRow.title}:`, err.message);
-      await logStage(`Story Writer Agent: Error for "${brdRow.title}" — ${err.message}`, 'failed');
+      console.error(`[DemoPipeline] Story Writer error for BRD ${brd.brdData.title}:`, err.message);
+      
+      const fallbackResult = buildFallbackStories(brd.brdData);
+      const epics = fallbackResult.epics;
+      const stories = fallbackResult.userStories;
+
+      for (let ei = 0; ei < epics.length; ei++) {
+        const epic = epics[ei];
+        const epicRef = `EP-FB-${String(totalEpics + ei + 1).padStart(3, '0')}`;
+        const epicInsert = await query(
+          `INSERT INTO epics (brd_id, epic_ref, title, description, total_points, status)
+           VALUES ($1, $2, $3, $4, $5, 'draft') RETURNING id`,
+          [brd.brdId, epicRef, epic.title, epic.description, 8]
+        );
+        const epicId = epicInsert.rows[0].id;
+
+        const epicStories = stories.filter((s: any) => s.epicTitle === epic.title);
+        for (let si = 0; si < epicStories.length; si++) {
+          const story = epicStories[si];
+          await query(
+            `INSERT INTO user_stories (epic_id, story_ref, title, story_text, story_points, priority, acceptance_criteria, status)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft')`,
+            [epicId, `${epicRef}-S${si+1}`, story.title, story.description, story.storyPoints, 'medium', story.acceptanceCriteria, 'draft']
+          );
+        }
+        totalStories += epicStories.length;
+      }
+      totalEpics += epics.length;
+
+      await logStage(`Story Writer Agent: Error for "${brd.brdData.title}" — fallback stories generated`, 'failed');
     }
   }
 

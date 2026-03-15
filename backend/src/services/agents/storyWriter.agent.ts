@@ -90,20 +90,19 @@ OUTPUT FORMAT (STRICT JSON ONLY)
 {
   "epics": [
     {
-      "epic_id": "epic_1",
-      "title": "",
-      "description": "",
-      "user_stories": [
-        {
-          "story_id": "story_1",
-          "title": "",
-          "story": "",
-          "story_points": number,
-          "acceptance_criteria": [
-            "Given ... When ... Then ..."
-          ]
-        }
-      ]
+      "title": "Epic Title",
+      "description": "Comprehensive description",
+      "acceptanceCriteria": ["Criterion 1", "Criterion 2"],
+      "businessValue": "Value description"
+    }
+  ],
+  "userStories": [
+    {
+      "epicTitle": "Epic Title",
+      "title": "As a... I want... So that...",
+      "description": "Details",
+      "acceptanceCriteria": ["Given... When... Then..."],
+      "storyPoints": 3
     }
   ]
 }
@@ -123,7 +122,7 @@ ${brdText}
 
   const response = await ai.models.generateContent({
     model: DEFAULT_MODEL,
-    contents: prompt,
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
     config: {
       responseMimeType: 'application/json',
       responseSchema: StoryWriterSchema,

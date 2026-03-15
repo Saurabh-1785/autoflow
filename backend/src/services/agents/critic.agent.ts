@@ -72,20 +72,12 @@ OUTPUT FORMAT
 Return ONLY valid JSON in the following structure:
 
 {
-  "total_score": number,
-  "status": "approved" | "rejected",
-  "scores": {
-    "clarity": number,
-    "business_value": number,
-    "feasibility": number,
-    "success_metrics": number,
-    "alignment_with_feedback": number
-  },
-  "issues": [
-    "list of specific weaknesses found in the BRD"
-  ],
-  "improvement_suggestions": [
-    "clear and actionable recommendations to improve the BRD"
+  "score": number,
+  "approved": boolean,
+  "feedback": "Why this score was given",
+  "suggestedImprovements": [
+    "Actionable improvement 1",
+    "Actionable improvement 2"
   ]
 }
 
@@ -102,7 +94,7 @@ ${brdText}
 
   const response = await ai.models.generateContent({
     model: DEFAULT_MODEL,
-    contents: prompt,
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
     config: {
       responseMimeType: 'application/json',
       responseSchema: ReviewSchema,

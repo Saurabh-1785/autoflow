@@ -42,31 +42,14 @@ ANALYSIS GUIDELINES
 
 BRD STRUCTURE
 
-Generate the BRD with the following sections:
+Generate the BRD with the following sections as JSON keys:
 
 - title
-- problem_statement
-- user_impact
-- business_value
-- proposed_solution
-- success_metrics
-- priority_level
-- source_evidence
-
-PRIORITY LEVEL
-
-Choose one:
-- low
-- medium
-- high
-- critical
-
-SUCCESS METRICS
-
-Provide measurable outcomes such as:
-- response time improvements
-- error rate reduction
-- user satisfaction increase
+- problemStatement
+- proposedSolution
+- businessValue
+- targetAudience
+- requirements (array of strings)
 
 OUTPUT FORMAT
 
@@ -74,15 +57,11 @@ Return ONLY valid JSON using this structure:
 
 {
   "title": "",
-  "problem_statement": "",
-  "user_impact": "",
-  "business_value": "",
-  "proposed_solution": "",
-  "success_metrics": [
-    ""
-  ],
-  "priority_level": "",
-  "source_evidence": [
+  "problemStatement": "",
+  "proposedSolution": "",
+  "businessValue": "",
+  "targetAudience": "",
+  "requirements": [
     ""
   ]
 }
@@ -102,7 +81,7 @@ ${feedbackText}
 
   const response = await ai.models.generateContent({
     model: DEFAULT_MODEL,
-    contents: prompt,
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
     config: {
       responseMimeType: 'application/json',
       responseSchema: BRDSchema,

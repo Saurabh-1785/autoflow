@@ -53,16 +53,10 @@ export const runClusterAgent = async (feedbackItems: { id: string; text: string 
   {
     "clusters": [
       {
-        "cluster_id": "cluster_1",
-        "topic": "Login Performance Issues",
+        "topicLabel": "Login Performance Issues",
+        "keywords": ["login", "slow", "auth"],
         "summary": "Users report slow login or authentication delays",
-        "feedback_ids": [1, 4, 7]
-      },
-      {
-        "cluster_id": "cluster_2",
-        "topic": "Upload Failures",
-        "summary": "Users experience errors when uploading files",
-        "feedback_ids": [2, 5]
+        "rawFeedbackIds": ["uuid-1", "uuid-2"]
       }
     ]
   }
@@ -81,7 +75,7 @@ export const runClusterAgent = async (feedbackItems: { id: string; text: string 
 
   const response = await ai.models.generateContent({
     model: DEFAULT_MODEL,
-    contents: prompt,
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
     config: {
       responseMimeType: 'application/json',
       responseSchema: ClusterSchema,
