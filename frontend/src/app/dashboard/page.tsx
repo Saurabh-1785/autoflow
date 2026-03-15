@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { clearPipelineRunSession, markPipelineRun } from "@/lib/pipeline-session";
-import { Play, CircleDashed, CheckCircle2, FileText, Settings, Database, Network, Server, User, ListChecks } from "lucide-react";
+import { Play, CircleDashed, CheckCircle2, FileText, Database, Network, ListChecks } from "lucide-react";
 import Link from "next/link";
 
 const STAGES = [
@@ -44,7 +44,15 @@ export default function DashboardPage() {
             if (logText.includes("critic agent")) stageIdx = 4;
             if (logText.includes("story writer agent")) {
               stageIdx = 5;
-              // If Story Writer has finished, pipeline is functionally complete for the automated part
+            }
+
+            const hasFinalStoryWriterCompletion = res.data.logs.some((l: any) =>
+              typeof l.stage === "string" && l.stage.toLowerCase().includes("story writer agent: completed")
+            );
+
+            // Move final stage to completed only when explicit completion log is present
+            if (hasFinalStoryWriterCompletion) {
+              stageIdx = STAGES.length;
               if (!runFinished) {
                 setIsRunning(false);
                 setRunFinished(true);
@@ -76,7 +84,8 @@ export default function DashboardPage() {
       console.error("Pipeline trigger failed:", err);
       clearPipelineRunSession();
       setIsRunning(false);
-      alert("Failed to trigger pipeline. Backend ensures n8n is unreachable.");
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      alert(`Failed to trigger pipeline: ${msg}`);
     }
   };
 
@@ -218,6 +227,14 @@ export default function DashboardPage() {
                   <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
                     <p className="text-2xl font-bold text-emerald-400">{summary.brdsGenerated || 0}</p>
                     <p className="text-xs text-slate-400 uppercase tracking-wider mt-1">BRDs Gen.</p>
+                  </div>
+                  <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
+                    <p className="text-2xl font-bold text-cyan-400">{summary.brdsApproved || 0}</p>
+                    <p className="text-xs text-slate-400 uppercase tracking-wider mt-1">BRDs Approved</p>
+                  </div>
+                  <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
+                    <p className="text-2xl font-bold text-violet-400">{summary.epics || 0}</p>
+                    <p className="text-xs text-slate-400 uppercase tracking-wider mt-1">Epics</p>
                   </div>
                   <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
                     <p className="text-2xl font-bold text-blue-400">{summary.userStories || 0}</p>

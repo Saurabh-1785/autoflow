@@ -55,6 +55,7 @@ router.get('/summary', async (req, res, next) => {
 
 router.post('/trigger', async (req, res, next) => {
   try {
+    console.log('[Pipeline] Trigger request received, source:', req.body?.source || 'csv');
     const source = (req.body?.source || process.env.PIPELINE_SOURCE || 'csv').toString();
     const allowCsvFallback = process.env.ALLOW_CSV_FALLBACK === 'true';
     const csvRows = source === 'csv' ? readLocalFeedbackRows() : null;
@@ -85,10 +86,13 @@ router.post('/trigger', async (req, res, next) => {
       res.json({ success: true, message: 'Pipeline triggered' });
     } catch (error) {
       if (allowCsvFallback && source === 'csv' && csvRows) {
-        await generateDemoArtifactsFromCsv(csvRows);
+        // Run pipeline async so frontend can poll for stage progress
+        generateDemoArtifactsFromCsv(csvRows).catch(err =>
+          console.error('[Pipeline] Demo pipeline error:', err)
+        );
         return res.json({
           success: true,
-          message: 'Pipeline executed in CSV demo mode (backend fallback).',
+          message: 'Pipeline triggered in demo mode',
         });
       }
 

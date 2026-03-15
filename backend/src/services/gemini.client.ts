@@ -15,7 +15,7 @@ if (!apiKey) {
 export const ai = new GoogleGenAI({ apiKey: apiKey || '' });
 
 // Helper to determine the default model
-export const DEFAULT_MODEL = 'gemini-3-flash';
+export const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-3-flash';
 
 // Optionally, you can wrap generation calls in a helper for consistent error handling
 export const generateJson = async (prompt: string, schema: any, ...args: any[]) => {

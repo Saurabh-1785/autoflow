@@ -6,23 +6,13 @@ export async function triggerN8nWebhook(webhookUrl: string, data: any) {
     const path = webhookUrl.startsWith('/') ? webhookUrl : `/${webhookUrl}`;
     const url = `${baseUrl}${path}`;
 
-    // Basic Auth support for local n8n
-    const config: any = {};
-    if (process.env.N8N_USER && process.env.N8N_PASSWORD) {
-      const auth = Buffer.from(`${process.env.N8N_USER}:${process.env.N8N_PASSWORD}`).toString('base64');
-      config.headers = {
-        'Authorization': `Basic ${auth}`
-      };
-    }
-
-    const res = await axios.post(url, data, config);
+    // n8n webhooks are public endpoints — no auth headers needed
+    console.log(`[Pipeline] Triggering n8n webhook: ${url}`);
+    const res = await axios.post(url, data);
+    console.log(`[Pipeline] n8n webhook response status: ${res.status}`);
     return res.data;
   } catch (error: any) {
-    if (error.response?.status === 401) {
-      console.error('n8n Webhook Error: Unauthorized. Check N8N_USER and N8N_PASSWORD.');
-    } else {
-      console.error('n8n Webhook Error:', error.message);
-    }
+    console.error('n8n Webhook Error:', error.response?.status, error.message);
     throw new Error('Failed to trigger n8n pipeline');
   }
 }

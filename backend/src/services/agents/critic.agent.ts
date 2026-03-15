@@ -5,17 +5,17 @@ import { Type } from '@google/genai';
 const ReviewSchema = {
   type: Type.OBJECT,
   properties: {
-    score: { 
-      type: Type.INTEGER, 
-      description: "Score out of 100 for the quality, feasibility, and clarity of the BRD" 
+    score: {
+      type: Type.INTEGER,
+      description: "Score out of 100 for the quality, feasibility, and clarity of the BRD"
     },
-    approved: { 
-      type: Type.BOOLEAN, 
-      description: "Whether the BRD is approved (score >= 70) or rejected" 
+    approved: {
+      type: Type.BOOLEAN,
+      description: "Whether the BRD is approved (score >= 70) or rejected"
     },
-    feedback: { 
-      type: Type.STRING, 
-      description: "Constructive feedback and specific reasons for the score" 
+    feedback: {
+      type: Type.STRING,
+      description: "Constructive feedback and specific reasons for the score"
     },
     suggestedImprovements: {
       type: Type.ARRAY,

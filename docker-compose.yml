@@ -55,7 +55,7 @@ services:
       - N8N_USER=${N8N_USER:-admin}
       - N8N_PASSWORD=${N8N_PASSWORD:-autoflow2026}
       - PIPELINE_SOURCE=csv
-      - ALLOW_CSV_FALLBACK=false
+      - ALLOW_CSV_FALLBACK=true
       - LOCAL_CSV_PATH=/app/data/google_sheets_demo_data.csv
     volumes:
       - ./google_sheets_demo_data.csv:/app/data/google_sheets_demo_data.csv:ro

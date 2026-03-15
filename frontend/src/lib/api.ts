@@ -8,16 +8,16 @@ export async function fetchApi<T>(endpoint: string, options?: RequestInit): Prom
       ...options?.headers,
     },
   });
-  
+
   if (!res.ok) {
     throw new Error(`API Error: ${res.statusText}`);
   }
-  
+
   const json = await res.json();
   if (!json.success && json.error) {
     throw new Error(json.error);
   }
-  
+
   return json;
 }
 
@@ -27,47 +27,47 @@ export const api = {
     fetchApi<any>('/feedback'),
 
   // BRDs
-  getBrds: (status?: string) => 
+  getBrds: (status?: string) =>
     fetchApi<any>(`/brds${status ? `?status=${status}` : ''}`),
-  getBrd: (id: string) => 
+  getBrd: (id: string) =>
     fetchApi<any>(`/brds/${id}`),
-  approveBrd: (id: string, edits?: string, actor?: string) => 
+  approveBrd: (id: string, edits?: string, actor?: string) =>
     fetchApi<any>(`/brds/${id}/approve`, {
       method: 'PATCH',
       body: JSON.stringify({ edits, actor }),
     }),
-  rejectBrd: (id: string, reason?: string, actor?: string) => 
+  rejectBrd: (id: string, reason?: string, actor?: string) =>
     fetchApi<any>(`/brds/${id}/reject`, {
       method: 'PATCH',
       body: JSON.stringify({ reason, actor }),
     }),
 
   // Priority
-  getPriorities: () => 
+  getPriorities: () =>
     fetchApi<any>('/priority'),
-  updatePriorities: (ids: string[]) => 
+  updatePriorities: (ids: string[]) =>
     fetchApi<any>('/priority', {
       method: 'PATCH',
       body: JSON.stringify({ orderedIds: ids }),
     }),
-  finalizePriorities: (selectedIds: string[]) => 
+  finalizePriorities: (selectedIds: string[]) =>
     fetchApi<any>('/priority/finalize', {
       method: 'POST',
       body: JSON.stringify({ selectedIds }),
     }),
 
   // Epics
-  getEpics: () => 
+  getEpics: () =>
     fetchApi<any>('/epics'),
-  getEpic: (id: string) => 
+  getEpic: (id: string) =>
     fetchApi<any>(`/epics/${id}`),
 
   // Pipeline Status
-  getPipelineStatus: () => 
+  getPipelineStatus: () =>
     fetchApi<any>('/pipeline/status'),
   getPipelineSummary: () =>
     fetchApi<any>('/pipeline/summary'),
-  triggerPipeline: (source?: string) => 
+  triggerPipeline: (source?: string) =>
     fetchApi<any>('/pipeline/trigger', {
       method: 'POST',
       body: JSON.stringify(source ? { source } : {}),
